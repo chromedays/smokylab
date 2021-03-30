@@ -41,9 +41,9 @@ Compiler('Compiler-Clang') {
     Using(.clangBaseConfig)
     .compilerOptions + ' -Z7 -Od -D_CRT_SECURE_NO_WARNINGS' +
     ' -I"$VSIncludePath$" -I"$WindowsSDKIncludePath$" -I"$WindowsSDKSharedIncludePath$" -I"$WindowsSDKUcrtIncludePath$" -I"dep" -DINSIGHT_WINDOWS -DVK_USE_PLATFORM_WIN32_KHR' +
-    ''
+    ' -Wno-language-extension-token -Wno-zero-as-null-pointer-constant'
     .cCompilerFlags + ' -TC'
-    .cppCompilerFlags + ' -TP -std:c++17'
+    .cppCompilerFlags + ' -TP -std:c++latest'
     .linkerOptions = ' "%1" -OUT:"%2" -SUBSYSTEM:CONSOLE -DEBUG -LIBPATH:"$VSLibPath_x64$" -LIBPATH:"$WindowsSDKLibPath_x64$" -LIBPATH:"$WindowsSDKUcrtLibPath_x64$" -LIBPATH:"dep\SDL2" gdi32.lib Shell32.lib SDL2.lib SDL2main.lib d3d11.lib dxgi.lib dxguid.lib d3dcompiler.lib winmm.lib Shcore.lib'
 ]
 

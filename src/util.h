@@ -32,6 +32,30 @@
     ASSERT(vulkanCallResult == VK_SUCCESS);                                    \
   } while (0)
 
+#define HR_ASSERT(exp)                                                         \
+  do {                                                                         \
+    HRESULT hr__ = (exp);                                                      \
+    ASSERT(SUCCEEDED(hr__));                                                   \
+  } while (0)
+
+#ifdef __cplusplus
+#define COM_RELEASE(com)                                                       \
+  do {                                                                         \
+    if (com) {                                                                 \
+      com->Release();                                                          \
+      com = NULL;                                                              \
+    }                                                                          \
+  } while (0)
+#else
+#define COM_RELEASE(com)                                                       \
+  do {                                                                         \
+    if (com) {                                                                 \
+      com->lpVtbl->Release(com);                                               \
+      com = NULL;                                                              \
+    }                                                                          \
+  } while (0)
+#endif
+
 #define LOG(...)                                                               \
   do {                                                                         \
     printf(__VA_ARGS__);                                                       \
