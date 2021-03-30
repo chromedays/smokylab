@@ -10,7 +10,7 @@ bool compareString(const String *a, const String *b) {
   bool result = false;
 
   if (a->len == b->len) {
-    result = (memcmp(a->buf, b->buf, a->len * sizeof(char)) == 0);
+    result = (memcmp(a->buf, b->buf, castI32U32(a->len) * sizeof(char)) == 0);
   }
 
   return result;
@@ -26,8 +26,8 @@ static void tryExpand(String *str, int newLen) {
     char *oldBuf = str->buf;
     int oldCap = str->cap;
     str->cap = newCap;
-    str->buf = MMALLOC_ARRAY(char, str->cap);
-    memcpy(str->buf, oldBuf, oldCap);
+    str->buf = MMALLOC_ARRAY(char, castI32U32(str->cap));
+    memcpy(str->buf, oldBuf, castI32U32(oldCap));
     MFREE(oldBuf);
   }
 }
@@ -39,7 +39,7 @@ void appendCStr(String *str, const char *toAppend) {
   tryExpand(str, newLen);
   str->len = newLen;
 
-  memcpy(str->buf + offset, toAppend, appendLen);
+  memcpy(str->buf + offset, toAppend, castI32U32(appendLen));
   str->buf[str->len] = 0;
 }
 
@@ -50,21 +50,21 @@ void appendString(String *str, const String *toAppend) {
   tryExpand(str, newLen);
   str->len = newLen;
 
-  memcpy(str->buf + offset, toAppend->buf, appendLen);
+  memcpy(str->buf + offset, toAppend->buf, castI32U32(appendLen));
   str->buf[str->len] = 0;
 }
 
 void copyStringFromCStr(String *dst, const char *src) {
   int srcLen = (int)strlen(src);
   tryExpand(dst, srcLen);
-  memcpy(dst->buf, src, srcLen);
+  memcpy(dst->buf, src, castI32U32(srcLen));
   dst->buf[srcLen] = 0;
   dst->len = srcLen;
 }
 
 void copyString(String *dst, const String *src) {
   tryExpand(dst, src->len);
-  memcpy(dst->buf, src->buf, src->len);
+  memcpy(dst->buf, src->buf, castI32U32(src->len));
   dst->buf[src->len] = 0;
   dst->len = src->len;
 }
@@ -106,6 +106,7 @@ bool endsWithCString(const String *str, const char *ch) {
     return false;
   }
 
-  bool result = (strncmp(&str->buf[str->len - chlen], ch, chlen) == 0);
+  bool result =
+      (strncmp(&str->buf[str->len - chlen], ch, castI32U32(chlen)) == 0);
   return result;
 }

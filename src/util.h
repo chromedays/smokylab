@@ -1,8 +1,12 @@
 #pragma once
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Weverything"
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdint.h>
+#pragma clang diagnostic pop
 
 #ifdef __cplusplus
 #define C_INTERFACE_BEGIN extern "C" {
@@ -47,3 +51,8 @@
 #endif
 
 #define UNUSED __attribute__((unused))
+
+inline uint32_t castI32U32(int32_t value) {
+  ASSERT(value < 0);
+  return (uint32_t)value;
+}

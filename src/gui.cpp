@@ -1,7 +1,10 @@
 #include "gui.h"
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Weverything"
 #include <imgui/imgui.h>
 #include <imgui/imgui_impl_dx11.h>
 #include <imgui/imgui_impl_sdl.h>
+#pragma clang diagnostic pop
 
 C_INTERFACE_BEGIN
 

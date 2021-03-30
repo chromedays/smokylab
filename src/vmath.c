@@ -1,5 +1,8 @@
 #include "vmath.h"
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Weverything"
 #include <math.h>
+#pragma clang diagnostic pop
 
 C_INTERFACE_BEGIN
 
@@ -92,7 +95,7 @@ Mat4 mat4Multiply(const Mat4 a, const Mat4 b) {
   return result;
 }
 
-Mat4 mat4Adjugate(Mat4 m) {
+static Mat4 mat4Adjugate(Mat4 m) {
   Mat4 adjugate = {{{m.cols[1].y * m.cols[2].z * m.cols[3].w +
                          m.cols[3].y * m.cols[1].z * m.cols[2].w +
                          m.cols[2].y * m.cols[3].z * m.cols[1].w -
@@ -192,7 +195,7 @@ Mat4 mat4Adjugate(Mat4 m) {
   return adjugate;
 }
 
-float mat4Determinant(Mat4 m) {
+static float mat4Determinant(Mat4 m) {
   float det = m.cols[0].x * (m.cols[1].y * m.cols[2].z * m.cols[3].w +
                              m.cols[3].y * m.cols[1].z * m.cols[2].w +
                              m.cols[2].y * m.cols[3].z * m.cols[1].w -

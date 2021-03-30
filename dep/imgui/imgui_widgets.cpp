@@ -1,3 +1,5 @@
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Weverything"
 // dear imgui, v1.83 WIP
 // (widgets code)
 
