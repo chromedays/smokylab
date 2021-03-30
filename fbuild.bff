@@ -30,7 +30,7 @@ Compiler('Compiler-Clang') {
 
     .compiler = 'Compiler-Clang'
     .linker = '$VSLLVMPath_x64$\lld-link.exe'
-    .compilerOptions = ' -o "%2" "%1" -c -Wall -Wno-c++98-compat-pedantic -fdiagnostics-absolute-paths -DDEBUG'
+    .compilerOptions = ' -o "%2" "%1" -c -Wall -Wno-old-style-cast -Wno-c++98-compat-pedantic -fdiagnostics-absolute-paths -DDEBUG'
 
     .cCompilerFlags = ' '
     .cppCompilerFlags = ' '
@@ -41,7 +41,7 @@ Compiler('Compiler-Clang') {
     Using(.clangBaseConfig)
     .compilerOptions + ' -Z7 -Od -D_CRT_SECURE_NO_WARNINGS' +
     ' -I"$VSIncludePath$" -I"$WindowsSDKIncludePath$" -I"$WindowsSDKSharedIncludePath$" -I"$WindowsSDKUcrtIncludePath$" -I"dep" -DINSIGHT_WINDOWS -DVK_USE_PLATFORM_WIN32_KHR' +
-    ' -Wno-implicit-int-float-conversion -Wno-zero-length-array -Wno-microsoft-flexible-array -Wno-flexible-array-extensions -Wno-float-conversion -Wno-macro-redefined -Wno-c99-extensions -Wno-old-style-cast -Wno-zero-as-null-pointer-constant -Wno-deprecated-dynamic-exception-spec -Wno-nested-anon-types -Wno-pragma-pack -Wno-gnu-anonymous-struct -Wno-gnu-folding-constant -Wno-redundant-parens -Wno-bad-function-cast -Wno-ignored-attributes -Wno-ignored-pragma-intrinsic -Wno-dollar-in-identifier-extension -Wno-extra-semi-stmt -Wno-cast-qual -Wno-strict-prototypes -Wno-expansion-to-defined -Wno-microsoft-enum-value -Wno-extra-semi -Wno-microsoft-anon-tag -Wno-nonportable-include-path -Wno-nonportable-system-include-path'
+    ''
     .cCompilerFlags + ' -TC'
     .cppCompilerFlags + ' -TP -std:c++17'
     .linkerOptions = ' "%1" -OUT:"%2" -SUBSYSTEM:CONSOLE -DEBUG -LIBPATH:"$VSLibPath_x64$" -LIBPATH:"$WindowsSDKLibPath_x64$" -LIBPATH:"$WindowsSDKUcrtLibPath_x64$" -LIBPATH:"dep\SDL2" gdi32.lib Shell32.lib SDL2.lib SDL2main.lib d3d11.lib dxgi.lib dxguid.lib d3dcompiler.lib winmm.lib Shcore.lib'

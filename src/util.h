@@ -53,6 +53,6 @@
 #define UNUSED __attribute__((unused))
 
 inline uint32_t castI32U32(int32_t value) {
-  ASSERT(value < 0);
+  ASSERT(value >= 0);
   return (uint32_t)value;
 }
