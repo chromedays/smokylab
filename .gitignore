@@ -1,0 +1,7 @@
+/.clangd
+/.cache
+/bin
+/tmp
+/compile_commands.json
+/fbuild.*.fdb
+imgui.ini
