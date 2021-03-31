@@ -106,6 +106,37 @@ int main(UNUSED int argc, UNUSED char **argv) {
   ShaderProgram brdfProgram = {};
   createProgram("brdf", &brdfProgram);
 
+  Vertex vertices[] = {
+      {{-0.5f, -0.5f, 0}},
+      {{0.5f, -0.5f, 0}},
+      {{0, 0.5f, 0}},
+  };
+
+  ID3D11Buffer *vertexBuffer;
+  BufferDesc vertexBufferDesc = {
+      .size = sizeof(vertices),
+      .initialData = vertices,
+      .usage = D3D11_USAGE_IMMUTABLE,
+      .bindFlags = D3D11_BIND_VERTEX_BUFFER,
+  };
+  createBuffer(&vertexBufferDesc, &vertexBuffer);
+
+  ID3D11Buffer *viewUniformBuffer;
+  BufferDesc viewUniformBufferDesc = {
+      .size = sizeof(ViewUniforms),
+      .usage = D3D11_USAGE_DEFAULT,
+      .bindFlags = D3D11_BIND_CONSTANT_BUFFER,
+  };
+  createBuffer(&viewUniformBufferDesc, &viewUniformBuffer);
+
+  ID3D11Buffer *drawUniformBuffer;
+  BufferDesc drawUniformBufferDesc = {
+      .size = sizeof(DrawUniforms),
+      .usage = D3D11_USAGE_DEFAULT,
+      .bindFlags = D3D11_BIND_CONSTANT_BUFFER,
+  };
+  createBuffer(&drawUniformBufferDesc, &drawUniformBuffer);
+
   LOG("Entering main loop.");
 
   bool running = true;
@@ -119,12 +150,60 @@ int main(UNUSED int argc, UNUSED char **argv) {
       }
     }
 
+    ViewUniforms viewUniforms = {
+        .viewMat = mat4Identity(),
+        .projMat = mat4Identity(),
+    };
+    gContext->UpdateSubresource(viewUniformBuffer, 0, NULL, &viewUniforms, 0,
+                                0);
+
+    DrawUniforms drawUniforms = {
+        .modelMat = mat4Identity(),
+        .invModelMat = mat4Identity(),
+    };
+    gContext->UpdateSubresource(drawUniformBuffer, 0, NULL, &drawUniforms, 0,
+                                0);
+
+    D3D11_VIEWPORT viewport = {
+        .TopLeftX = 0,
+        .TopLeftY = 0,
+        .Width = (float)ww,
+        .Height = (float)wh,
+        .MinDepth = 0,
+        .MaxDepth = 1,
+    };
+    gContext->RSSetViewports(1, &viewport);
+
+    gContext->OMSetRenderTargets(1, &gSwapChainRTV, gSwapChainDSV);
+    FLOAT clearColor[4] = {0, 0, 0, 1};
+    gContext->ClearRenderTargetView(gSwapChainRTV, clearColor);
+    gContext->ClearDepthStencilView(gSwapChainDSV, D3D11_CLEAR_DEPTH, 0, 0);
+
+    gContext->OMSetDepthStencilState(depthStencilState, 0);
+    gContext->RSSetState(rasterizerState);
+    gContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+    useProgram(&brdfProgram);
+    ID3D11Buffer *uniformBuffers[] = {viewUniformBuffer, drawUniformBuffer};
+    gContext->VSSetConstantBuffers(0, ARRAY_SIZE(uniformBuffers),
+                                   uniformBuffers);
+
+    UINT stride = sizeof(Vertex), offset = 0;
+    gContext->IASetVertexBuffers(0, 1, &vertexBuffer, &stride, &offset);
+    gContext->Draw(3, 0);
+
     gSwapChain->Present(1, 0);
   }
+
+  COM_RELEASE(drawUniformBuffer);
+  COM_RELEASE(viewUniformBuffer);
+  COM_RELEASE(vertexBuffer);
 
   destroyProgram(&brdfProgram);
   destroyProgram(&fstProgram);
 
+  COM_RELEASE(rasterizerState);
+  COM_RELEASE(depthStencilState);
   COM_RELEASE(gSwapChainDSV);
   COM_RELEASE(gSwapChainDepthStencilBuffer);
   COM_RELEASE(gSwapChainRTV);

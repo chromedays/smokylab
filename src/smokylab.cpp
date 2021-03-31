@@ -190,3 +190,20 @@ void useProgram(const ShaderProgram *program) {
   gContext->VSSetShader(program->vert, NULL, 0);
   gContext->PSSetShader(program->frag, NULL, 0);
 }
+
+void createBuffer(const BufferDesc *desc, ID3D11Buffer **buffer) {
+  D3D11_BUFFER_DESC bufferDesc = {
+      .ByteWidth = castI32U32(desc->size),
+      .Usage = desc->usage,
+      .BindFlags = desc->bindFlags,
+  };
+
+  if (desc->initialData) {
+    D3D11_SUBRESOURCE_DATA initialData = {
+        .pSysMem = desc->initialData,
+    };
+    HR_ASSERT(gDevice->CreateBuffer(&bufferDesc, &initialData, buffer));
+  } else {
+    HR_ASSERT(gDevice->CreateBuffer(&bufferDesc, NULL, buffer));
+  }
+}

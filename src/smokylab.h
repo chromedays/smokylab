@@ -1,6 +1,7 @@
 #pragma once
 #include "util.h"
 #include "str.h"
+#include "vmath.h"
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Weverything"
 #include <SDL2/SDL.h>
@@ -30,5 +31,33 @@ typedef struct _ShaderProgram {
 void createProgram(const char *baseName, ShaderProgram *program);
 void destroyProgram(ShaderProgram *program);
 void useProgram(const ShaderProgram *program);
+
+typedef struct _Vertex {
+  Float4 position;
+  // Float4 color;
+  // Float2 texcoord;
+  // Float3 normal;
+} Vertex;
+
+typedef uint32_t VertexIndex;
+
+typedef struct _BufferDesc {
+  int size;
+  const void *initialData;
+  D3D11_USAGE usage;
+  UINT bindFlags;
+} BufferDesc;
+
+void createBuffer(const BufferDesc *desc, ID3D11Buffer **buffer);
+
+typedef struct _ViewUniforms {
+  Mat4 viewMat;
+  Mat4 projMat;
+} ViewUniforms;
+
+typedef struct _DrawUniforms {
+  Mat4 modelMat;
+  Mat4 invModelMat;
+} DrawUniforms;
 
 C_INTERFACE_END
