@@ -280,6 +280,8 @@ int main(UNUSED int argc, UNUSED char **argv) {
 
   destroyGUI();
 
+  destroyModel(&model);
+
   COM_RELEASE(drawUniformBuffer);
   COM_RELEASE(viewUniformBuffer);
   COM_RELEASE(vertexBuffer);

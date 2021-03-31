@@ -147,6 +147,7 @@ typedef struct _Model {
 } Model;
 
 void loadGLTFModel(const char *path, Model *model);
+void destroyModel(Model *model);
 void renderModel(const Model *model, ID3D11Buffer *drawUniformBuffer);
 
 typedef struct _FreeLookCamera {

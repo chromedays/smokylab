@@ -564,6 +564,29 @@ void loadGLTFModel(const char *path, Model *model) {
   destroyString(&filePath);
 }
 
+void destroyModel(Model *model) {
+  for (int i = 0; i < model->numScenes; ++i) {
+    MFREE(model->scenes[i].nodes);
+  }
+  MFREE(model->scenes);
+
+  for (int i = 0; i < model->numNodes; ++i) {
+    MFREE(model->nodes[i].childNodes);
+  }
+  MFREE(model->nodes);
+
+  COM_RELEASE(model->gpuIndexBuffer);
+  COM_RELEASE(model->gpuVertexBuffer);
+  MFREE(model->bufferBase);
+
+  for (int i = 0; i < model->numMeshes; ++i) {
+    MFREE(model->meshes[i].subMeshes);
+  }
+  MFREE(model->meshes);
+
+  MFREE(model->materials);
+}
+
 static void renderMesh(const Model *model, const Mesh *mesh,
                        ID3D11Buffer *drawUniformBuffer) {
 
