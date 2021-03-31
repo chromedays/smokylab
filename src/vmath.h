@@ -2,8 +2,13 @@
 #include "util.h"
 
 #define MATH_PI 3.141592f
+#ifdef __cplusplus
+#define DEFAULT_UP                                                             \
+  Float3 { 0, 1, 0 }
+#else
 #define DEFAULT_UP                                                             \
   (Float3) { 0, 1, 0 }
+#endif
 
 C_INTERFACE_BEGIN
 

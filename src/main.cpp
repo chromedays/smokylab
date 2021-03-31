@@ -1,7 +1,14 @@
 #include "smokylab.h"
 #include "util.h"
+#include "gui.h"
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Weverything"
+#define CGLTF_IMPLEMENTATION
+#include <cgltf.h>
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
+#define CUTE_TIME_IMPLEMENTATION
+#include <cute_time.h>
 #include <SDL2/SDL.h>
 #include <d3d11_1.h>
 #include <dxgidebug.h>
@@ -137,22 +144,94 @@ int main(UNUSED int argc, UNUSED char **argv) {
   };
   createBuffer(&drawUniformBufferDesc, &drawUniformBuffer);
 
+  Model model = {};
+  loadGLTFModel("../assets/models/CesiumMilkTruck", &model);
+
+  FreeLookCamera cam = {};
+
+  initGUI(window, gDevice, gContext);
+  GUI gui = {};
+
   LOG("Entering main loop.");
 
+  int lastCursorX = 0;
+  int lastCursorY = 0;
+  bool leftDown = false;
+  bool rightDown = false;
+  bool forwardDown = false;
+  bool backDown = false;
+  bool mouseDown = false;
   bool running = true;
   while (running) {
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
+      handleGUIEvent(&event);
       switch (event.type) {
+      case SDL_MOUSEBUTTONDOWN:
+      case SDL_MOUSEBUTTONUP:
+        mouseDown = (event.button.state == SDL_PRESSED);
+        break;
+      case SDL_KEYDOWN:
+      case SDL_KEYUP:
+        forwardDown = processKeyboardEvent(&event, SDLK_w, forwardDown);
+        backDown = processKeyboardEvent(&event, SDLK_s, backDown);
+        leftDown = processKeyboardEvent(&event, SDLK_a, leftDown);
+        rightDown = processKeyboardEvent(&event, SDLK_d, rightDown);
+        break;
       case SDL_QUIT:
         running = false;
         break;
       }
     }
 
+    updateGUI(window, &gui);
+
+    float dt = ct_time();
+
+    SDL_GetWindowSize(window, &ww, &wh);
+
+    int cursorX;
+    int cursorY;
+    SDL_GetMouseState(&cursorX, &cursorY);
+
+    int cursorDeltaX = 0;
+    int cursorDeltaY = 0;
+    if (lastCursorX || lastCursorY) {
+      cursorDeltaX = cursorX - lastCursorX;
+      cursorDeltaY = cursorY - lastCursorY;
+    }
+    lastCursorX = cursorX;
+    lastCursorY = cursorY;
+
+    if (mouseDown && !guiWantsCaptureMouse()) {
+      cam.yaw += (float)cursorDeltaX * 0.6f;
+      cam.pitch -= (float)cursorDeltaY * 0.6f;
+      cam.pitch = CLAMP(cam.pitch, -88.f, 88.f);
+    }
+
+    int dx = 0, dy = 0;
+    if (leftDown) {
+      dx -= 1;
+    }
+    if (rightDown) {
+      dx += 1;
+    }
+    if (forwardDown) {
+      dy += 1;
+    }
+    if (backDown) {
+      dy -= 1;
+    }
+
+    float camMovementSpeed = 4.f;
+    Float3 camMovement = (getRight(&cam) * (float)dx * camMovementSpeed +
+                          getLook(&cam) * (float)dy * camMovementSpeed) *
+                         dt;
+    cam.pos += camMovement;
+
     ViewUniforms viewUniforms = {
-        .viewMat = mat4Identity(),
-        .projMat = mat4Identity(),
+        .viewMat = getViewMatrix(&cam),
+        .projMat = mat4Perspective(75, (float)ww / (float)wh, 0.1f, 500),
     };
     gContext->UpdateSubresource(viewUniformBuffer, 0, NULL, &viewUniforms, 0,
                                 0);
@@ -192,8 +271,14 @@ int main(UNUSED int argc, UNUSED char **argv) {
     gContext->IASetVertexBuffers(0, 1, &vertexBuffer, &stride, &offset);
     gContext->Draw(3, 0);
 
+    renderModel(&model, drawUniformBuffer);
+
+    renderGUI();
+
     gSwapChain->Present(1, 0);
   }
+
+  destroyGUI();
 
   COM_RELEASE(drawUniformBuffer);
   COM_RELEASE(viewUniformBuffer);
