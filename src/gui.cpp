@@ -8,16 +8,16 @@
 
 C_INTERFACE_BEGIN
 
-void initGUI(SDL_Window *window, SDL_GLContext glContext) {
+void initGUI(SDL_Window *window, ID3D11Device *device,
+             ID3D11DeviceContext *deviceContext) {
   ImGui::CreateContext();
   ImGui::StyleColorsLight();
-  ImGui_ImplSDL2_InitForOpenGL(window, glContext);
-  // ImGui_ImplDX11_Init( , ID3D11DeviceContext *device_context)("#version
-  // 130");
+  ImGui_ImplSDL2_InitForD3D(window);
+  ImGui_ImplDX11_Init(device, deviceContext);
 }
 
 void destroyGUI(void) {
-  // ImGui_ImplOpenGL3_Shutdown();
+  ImGui_ImplDX11_Shutdown();
   ImGui_ImplSDL2_Shutdown();
   ImGui::DestroyContext();
 }
@@ -25,7 +25,7 @@ void destroyGUI(void) {
 void handleGUIEvent(SDL_Event *event) { ImGui_ImplSDL2_ProcessEvent(event); }
 
 void updateGUI(SDL_Window *window, GUI *gui) {
-  // ImGui_ImplOpenGL3_NewFrame();
+  ImGui_ImplDX11_NewFrame();
   ImGui_ImplSDL2_NewFrame(window);
   ImGui::NewFrame();
 
@@ -36,9 +36,8 @@ void updateGUI(SDL_Window *window, GUI *gui) {
   ImGui::Render();
 }
 
-void renderGUI(void) {
-  // ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-}
+void renderGUI(void) { ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData()); }
 
 bool guiWantsCaptureMouse(void) { return ImGui::GetIO().WantCaptureMouse; }
+
 C_INTERFACE_END

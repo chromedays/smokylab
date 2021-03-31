@@ -1,5 +1,8 @@
 #include "str.h"
-#include "util.h"
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Weverything"
+#include <SDL2/SDL.h>
+#pragma clang diagnostic pop
 
 void destroyString(String *str) {
   MFREE(str->buf);
@@ -72,6 +75,12 @@ void copyString(String *dst, const String *src) {
 static bool isSeparator(char ch) {
   bool result = ch == '/' || ch == '\\';
   return result;
+}
+
+void copyBasePath(String *path) {
+  char *tmp = SDL_GetBasePath();
+  copyStringFromCStr(path, tmp);
+  SDL_free(tmp);
 }
 
 void appendPathCStr(String *str, const char *path) {

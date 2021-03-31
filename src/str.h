@@ -1,5 +1,8 @@
 #pragma once
+#include "util.h"
 #include <stdbool.h>
+
+C_INTERFACE_BEGIN
 
 typedef struct _String {
   int len;
@@ -21,7 +24,11 @@ void copyString(String *dst, const String *src);
     MFREE(buf);                                                                \
   } while (0)
 
+void copyBasePath(String *path);
+
 void appendPathCStr(String *str, const char *path);
 const char *pathBaseName(const String *str);
 
 bool endsWithCString(const String *str, const char *ch);
+
+C_INTERFACE_END

@@ -8,13 +8,6 @@
 #include <d3dcompiler.h>
 #pragma clang diagnostic pop
 
-static ID3D11Device *gDevice;
-static ID3D11DeviceContext *gContext;
-static IDXGISwapChain *gSwapChain;
-static ID3D11RenderTargetView *gSwapChainRTV;
-static ID3D11Texture2D *gSwapChainDepthStencilBuffer;
-static ID3D11DepthStencilView *gSwapChainDSV;
-
 int main(UNUSED int argc, UNUSED char **argv) {
   SDL_Init(SDL_INIT_VIDEO);
   SDL_Window *window =
@@ -81,6 +74,38 @@ int main(UNUSED int argc, UNUSED char **argv) {
   HR_ASSERT(gDevice->CreateDepthStencilView(gSwapChainDepthStencilBuffer, NULL,
                                             &gSwapChainDSV));
 
+  ID3D11DepthStencilState *depthStencilState;
+  D3D11_DEPTH_STENCIL_DESC depthStencilStateDesc = {
+      .DepthEnable = TRUE,
+      .DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL,
+      .DepthFunc = D3D11_COMPARISON_GREATER_EQUAL,
+      .StencilEnable = FALSE,
+  };
+  HR_ASSERT(gDevice->CreateDepthStencilState(&depthStencilStateDesc,
+                                             &depthStencilState));
+
+  ID3D11RasterizerState *rasterizerState;
+  D3D11_RASTERIZER_DESC rasterizerStateDesc = {
+      .FillMode = D3D11_FILL_SOLID,
+      .CullMode = D3D11_CULL_BACK,
+      .FrontCounterClockwise = TRUE,
+      .DepthBias = 0,
+      .DepthBiasClamp = 0.f,
+      .SlopeScaledDepthBias = 0.f,
+      .DepthClipEnable = TRUE,
+      .ScissorEnable = FALSE,
+      .MultisampleEnable = FALSE,
+      .AntialiasedLineEnable = FALSE,
+  };
+  HR_ASSERT(
+      gDevice->CreateRasterizerState(&rasterizerStateDesc, &rasterizerState));
+
+  ShaderProgram fstProgram = {};
+  createProgram("fst", &fstProgram);
+
+  ShaderProgram brdfProgram = {};
+  createProgram("brdf", &brdfProgram);
+
   LOG("Entering main loop.");
 
   bool running = true;
@@ -97,12 +122,33 @@ int main(UNUSED int argc, UNUSED char **argv) {
     gSwapChain->Present(1, 0);
   }
 
+  destroyProgram(&brdfProgram);
+  destroyProgram(&fstProgram);
+
   COM_RELEASE(gSwapChainDSV);
   COM_RELEASE(gSwapChainDepthStencilBuffer);
   COM_RELEASE(gSwapChainRTV);
   COM_RELEASE(gSwapChain);
   COM_RELEASE(gContext);
   COM_RELEASE(gDevice);
+
+#ifdef DEBUG
+  {
+    IDXGIDebug *debug;
+    HMODULE dxgidebugLibrary = LoadLibraryA("dxgidebug.dll");
+
+    typedef HRESULT(WINAPI * DXGIGetDebugInterfaceFn)(REFIID riid,
+                                                      void **ppDebug);
+    DXGIGetDebugInterfaceFn DXGIGetDebugInterface =
+        (DXGIGetDebugInterfaceFn)GetProcAddress(dxgidebugLibrary,
+                                                "DXGIGetDebugInterface");
+    DXGIGetDebugInterface(IID_PPV_ARGS(&debug));
+    HR_ASSERT(debug->ReportLiveObjects(DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_ALL));
+
+    FreeLibrary(dxgidebugLibrary);
+    COM_RELEASE(debug);
+  }
+#endif
 
   SDL_DestroyWindow(window);
 
