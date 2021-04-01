@@ -113,21 +113,6 @@ int main(UNUSED int argc, UNUSED char **argv) {
   ShaderProgram brdfProgram = {};
   createProgram("brdf", &brdfProgram);
 
-  Vertex vertices[] = {
-      {{-0.5f, -0.5f, 0}},
-      {{0.5f, -0.5f, 0}},
-      {{0, 0.5f, 0}},
-  };
-
-  ID3D11Buffer *vertexBuffer;
-  BufferDesc vertexBufferDesc = {
-      .size = sizeof(vertices),
-      .initialData = vertices,
-      .usage = D3D11_USAGE_IMMUTABLE,
-      .bindFlags = D3D11_BIND_VERTEX_BUFFER,
-  };
-  createBuffer(&vertexBufferDesc, &vertexBuffer);
-
   ID3D11Buffer *viewUniformBuffer;
   BufferDesc viewUniformBufferDesc = {
       .size = sizeof(ViewUniforms),
@@ -266,10 +251,8 @@ int main(UNUSED int argc, UNUSED char **argv) {
     ID3D11Buffer *uniformBuffers[] = {viewUniformBuffer, drawUniformBuffer};
     gContext->VSSetConstantBuffers(0, ARRAY_SIZE(uniformBuffers),
                                    uniformBuffers);
-
-    UINT stride = sizeof(Vertex), offset = 0;
-    gContext->IASetVertexBuffers(0, 1, &vertexBuffer, &stride, &offset);
-    gContext->Draw(3, 0);
+    gContext->PSSetConstantBuffers(0, ARRAY_SIZE(uniformBuffers),
+                                   uniformBuffers);
 
     renderModel(&model, drawUniformBuffer);
 
@@ -284,7 +267,6 @@ int main(UNUSED int argc, UNUSED char **argv) {
 
   COM_RELEASE(drawUniformBuffer);
   COM_RELEASE(viewUniformBuffer);
-  COM_RELEASE(vertexBuffer);
 
   destroyProgram(&brdfProgram);
   destroyProgram(&fstProgram);

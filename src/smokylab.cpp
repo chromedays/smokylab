@@ -210,6 +210,29 @@ void createBuffer(const BufferDesc *desc, ID3D11Buffer **buffer) {
   }
 }
 
+void createTexture2D(const TextureDesc *desc, ID3D11Texture2D **texture) {
+  D3D11_TEXTURE2D_DESC textureDesc = {
+      .Width = castI32U32(desc->width),
+      .Height = castI32U32(desc->height),
+      .MipLevels = 1,
+      .ArraySize = 1,
+      .Format = desc->format,
+      .SampleDesc =
+          {
+              .Count = 1,
+              .Quality = 0,
+          },
+      .Usage = desc->usage,
+      .BindFlags = desc->bindFlags,
+      .CPUAccessFlags = 0,
+  };
+  D3D11_SUBRESOURCE_DATA initialData = {
+      .pSysMem = desc->initialData,
+      .SysMemPitch = castI32U32(desc->width) * castI32U32(desc->bytesPerPixel),
+  };
+  HR_ASSERT(gDevice->CreateTexture2D(&textureDesc, &initialData, texture));
+}
+
 void loadGLTFModel(const char *path, Model *model) {
   String pathString = {0};
   copyStringFromCStr(&pathString, path);
@@ -239,7 +262,7 @@ void loadGLTFModel(const char *path, Model *model) {
 
   model->numTextures = gltf->textures_count;
   if (model->numTextures > 0) {
-    model->textures = MMALLOC_ARRAY(uint32_t, model->numTextures);
+    model->textures = MMALLOC_ARRAY(ID3D11Texture2D *, model->numTextures);
 
     String imageFilePath = {0};
     for (cgltf_size textureIndex = 0; textureIndex < gltf->images_count;
@@ -262,54 +285,114 @@ void loadGLTFModel(const char *path, Model *model) {
       }
       ASSERT(data);
 
-      // createTexture(
-      //     &(TextureDesc){
-      //         .width = w,
-      //         .height = h,
-      //         .internalFormat = GL_RGBA8,
-      //         .sourceFormat = GL_RGBA,
-      //         .sourceType = GL_UNSIGNED_BYTE,
-      //         .initialData = data,
-      //     },
-      //     &model->textures[textureIndex]);
+      TextureDesc desc = {
+          .width = w,
+          .height = h,
+          .bytesPerPixel = 4,
+          .format = DXGI_FORMAT_R8G8B8A8_UNORM,
+          .usage = D3D11_USAGE_IMMUTABLE,
+          .bindFlags = D3D11_BIND_SHADER_RESOURCE,
+          .initialData = data,
+      };
+      createTexture2D(&desc, &model->textures[textureIndex]);
 
       stbi_image_free(data);
     }
     destroyString(&imageFilePath);
   }
 
-  // model->numSamplers = gltf->samplers_count;
-  // if (model->numSamplers > 0) {
-  //   model->samplers = MMALLOC_ARRAY(uint32_t, model->numSamplers);
+#define GLTF_NEAREST 9728
+#define GLTF_LINEAR 9729
+#define GLTF_NEAREST_MIPMAP_NEAREST 9984
+#define GLTF_LINEAR_MIPMAP_NEAREST 9985
+#define GLTF_NEAREST_MIPMAP_LINEAR 9986
+#define GLTF_LINEAR_MIPMAP_LINEAR 9987
+#define GLTF_CLAMP_TO_EDGE 33071
+#define GLTF_MIRRORED_REPEAT 33648
+#define GLTF_REPEAT 10497
+  model->numSamplers = (int)gltf->samplers_count;
+  if (model->numSamplers > 0) {
+    model->samplers =
+        MMALLOC_ARRAY(ID3D11SamplerState *, castI32U32(model->numSamplers));
 
-  //   for (cgltf_size samplerIndex = 0; samplerIndex < gltf->samplers_count;
-  //        ++samplerIndex) {
-  //     cgltf_sampler *gltfSampler = &gltf->samplers[samplerIndex];
-  //     uint32_t *sampler = &model->samplers[samplerIndex];
-  //     glGenSamplers(1, sampler);
-  //     int32_t magFilter = gltfSampler->mag_filter;
-  //     if (magFilter == 0) {
-  //       magFilter = GL_LINEAR;
-  //     }
-  //     int32_t minFilter = gltfSampler->min_filter;
-  //     if (minFilter == 0) {
-  //       minFilter = GL_NEAREST_MIPMAP_LINEAR;
-  //     }
-  //     glSamplerParameteri(*sampler, GL_TEXTURE_MAG_FILTER, magFilter);
-  //     glSamplerParameteri(*sampler, GL_TEXTURE_MIN_FILTER, minFilter);
-  //     int32_t wrapModeS = gltfSampler->wrap_s;
-  //     if (wrapModeS == 0) {
-  //       wrapModeS = GL_REPEAT;
-  //     }
-  //     int32_t wrapModeT = gltfSampler->wrap_t;
-  //     if (wrapModeT == 0) {
-  //       wrapModeT = GL_REPEAT;
-  //     }
-  //     glSamplerParameteri(*sampler, GL_TEXTURE_WRAP_S, wrapModeS);
-  //     glSamplerParameteri(*sampler, GL_TEXTURE_WRAP_T, wrapModeT);
-  //     glSamplerParameteri(*sampler, GL_TEXTURE_WRAP_R, GL_REPEAT);
-  //   }
-  // }
+    for (cgltf_size samplerIndex = 0; samplerIndex < gltf->samplers_count;
+         ++samplerIndex) {
+      cgltf_sampler *gltfSampler = &gltf->samplers[samplerIndex];
+      ID3D11SamplerState **sampler = &model->samplers[samplerIndex];
+
+      D3D11_SAMPLER_DESC desc = {
+          .AddressW = D3D11_TEXTURE_ADDRESS_WRAP,
+          .MaxLOD = D3D11_FLOAT32_MAX,
+      };
+
+      if (gltfSampler->mag_filter == GLTF_NEAREST) {
+        if (gltfSampler->min_filter == GLTF_NEAREST) {
+          desc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
+        } else if (gltfSampler->min_filter == GLTF_LINEAR) {
+          desc.Filter = D3D11_FILTER_MIN_LINEAR_MAG_MIP_POINT;
+        } else if (gltfSampler->min_filter == GLTF_NEAREST_MIPMAP_NEAREST) {
+          desc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
+        } else if (gltfSampler->min_filter == GLTF_LINEAR_MIPMAP_NEAREST) {
+          desc.Filter = D3D11_FILTER_MIN_LINEAR_MAG_MIP_POINT;
+        } else if (gltfSampler->min_filter == GLTF_LINEAR_MIPMAP_LINEAR) {
+          desc.Filter = D3D11_FILTER_MIN_LINEAR_MAG_POINT_MIP_LINEAR;
+        } else { // NEAREST_MIPMAP_LINEAR
+          desc.Filter = D3D11_FILTER_MIN_MAG_POINT_MIP_LINEAR;
+        }
+      } else { // LINEAR
+        if (gltfSampler->min_filter == GLTF_NEAREST) {
+          desc.Filter = D3D11_FILTER_MIN_POINT_MAG_LINEAR_MIP_POINT;
+        } else if (gltfSampler->min_filter == GLTF_LINEAR) {
+          desc.Filter = D3D11_FILTER_MIN_MAG_LINEAR_MIP_POINT;
+        } else if (gltfSampler->min_filter == GLTF_NEAREST_MIPMAP_NEAREST) {
+          desc.Filter = D3D11_FILTER_MIN_POINT_MAG_LINEAR_MIP_POINT;
+        } else if (gltfSampler->min_filter == GLTF_LINEAR_MIPMAP_NEAREST) {
+          desc.Filter = D3D11_FILTER_MIN_MAG_LINEAR_MIP_POINT;
+        } else if (gltfSampler->min_filter == GLTF_LINEAR_MIPMAP_LINEAR) {
+          desc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+        } else { // NEAREST_MIPMAP_LINEAR
+          desc.Filter = D3D11_FILTER_MIN_POINT_MAG_MIP_LINEAR;
+        }
+      }
+
+      switch (gltfSampler->wrap_s) {
+      case GLTF_CLAMP_TO_EDGE:
+        desc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
+        break;
+      case GLTF_MIRRORED_REPEAT:
+        desc.AddressU = D3D11_TEXTURE_ADDRESS_MIRROR;
+        break;
+      case GLTF_REPEAT:
+      default:
+        desc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
+        break;
+      }
+      switch (gltfSampler->wrap_t) {
+      case GLTF_CLAMP_TO_EDGE:
+        desc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
+        break;
+      case GLTF_MIRRORED_REPEAT:
+        desc.AddressV = D3D11_TEXTURE_ADDRESS_MIRROR;
+        break;
+      case GLTF_REPEAT:
+      default:
+        desc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
+        break;
+      }
+
+      HR_ASSERT(gDevice->CreateSamplerState(&desc, sampler));
+    }
+  }
+
+#undef GLTF_NEAREST
+#undef GLTF_LINEAR
+#undef GLTF_NEAREST_MIPMAP_NEAREST
+#undef GLTF_LINEAR_MIPMAP_NEAREST
+#undef GLTF_NEAREST_MIPMAP_LINEAR
+#undef GLTF_LINEAR_MIPMAP_LINEAR
+#undef GLTF_CLAMP_TO_EDGE
+#undef GLTF_MIRRORED_REPEAT
+#undef GLTF_REPEAT
 
   model->numMaterials = gltf->materials_count;
   if (model->numMaterials > 0) {
@@ -585,6 +668,16 @@ void destroyModel(Model *model) {
   MFREE(model->meshes);
 
   MFREE(model->materials);
+
+  for (int i = 0; i < model->numSamplers; ++i) {
+    COM_RELEASE(model->samplers[i]);
+  }
+  MFREE(model->samplers);
+
+  for (int i = 0; i < model->numTextures; ++i) {
+    COM_RELEASE(model->textures[i]);
+  }
+  MFREE(model->textures);
 }
 
 static void renderMesh(const Model *model, const Mesh *mesh,

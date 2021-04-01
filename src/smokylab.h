@@ -50,6 +50,18 @@ typedef struct _BufferDesc {
 
 void createBuffer(const BufferDesc *desc, ID3D11Buffer **buffer);
 
+typedef struct _TextureDesc {
+  int width;
+  int height;
+  int bytesPerPixel;
+  DXGI_FORMAT format;
+  D3D11_USAGE usage;
+  UINT bindFlags;
+  bool generateMipMaps;
+  void *initialData;
+} TextureDesc;
+void createTexture2D(const TextureDesc *desc, ID3D11Texture2D **texture);
+
 typedef struct _ViewUniforms {
   Mat4 viewMat;
   Mat4 projMat;
@@ -58,6 +70,7 @@ typedef struct _ViewUniforms {
 typedef struct _DrawUniforms {
   Mat4 modelMat;
   Mat4 invModelMat;
+  Float4 baseColor;
 } DrawUniforms;
 
 typedef struct _Material {
@@ -116,10 +129,10 @@ typedef struct _Scene {
 
 typedef struct _Model {
   int numTextures;
-  uint32_t *textures;
+  ID3D11Texture2D **textures;
 
   int numSamplers;
-  uint32_t *samplers;
+  ID3D11SamplerState **samplers;
 
   int numMaterials;
   Material *materials;
