@@ -15,6 +15,10 @@ ID3D11RenderTargetView *gSwapChainRTV;
 ID3D11Texture2D *gSwapChainDepthStencilBuffer;
 ID3D11DepthStencilView *gSwapChainDSV;
 
+ID3D11Texture2D *gDefaultTexture;
+ID3D11ShaderResourceView *gDefaultTextureView;
+ID3D11SamplerState *gDefaultSampler;
+
 DXGI_RATIONAL queryRefreshRate(int ww, int wh, DXGI_FORMAT swapChainFormat) {
   DXGI_RATIONAL refreshRate = {};
 
@@ -262,7 +266,10 @@ void loadGLTFModel(const char *path, Model *model) {
 
   model->numTextures = gltf->textures_count;
   if (model->numTextures > 0) {
-    model->textures = MMALLOC_ARRAY(ID3D11Texture2D *, model->numTextures);
+    model->textures =
+        MMALLOC_ARRAY(ID3D11Texture2D *, castI32U32(model->numTextures));
+    model->textureViews = MMALLOC_ARRAY(ID3D11ShaderResourceView *,
+                                        castI32U32(model->numTextures));
 
     String imageFilePath = {0};
     for (cgltf_size textureIndex = 0; textureIndex < gltf->images_count;
@@ -295,6 +302,8 @@ void loadGLTFModel(const char *path, Model *model) {
           .initialData = data,
       };
       createTexture2D(&desc, &model->textures[textureIndex]);
+      gDevice->CreateShaderResourceView(model->textures[textureIndex], NULL,
+                                        &model->textureViews[textureIndex]);
 
       stbi_image_free(data);
     }
@@ -675,17 +684,39 @@ void destroyModel(Model *model) {
   MFREE(model->samplers);
 
   for (int i = 0; i < model->numTextures; ++i) {
+    COM_RELEASE(model->textureViews[i]);
     COM_RELEASE(model->textures[i]);
   }
   MFREE(model->textures);
 }
 
 static void renderMesh(const Model *model, const Mesh *mesh,
-                       ID3D11Buffer *drawUniformBuffer) {
+                       ID3D11Buffer *drawUniformBuffer,
+                       ID3D11Buffer *materialUniformBuffer) {
 
   for (int subMeshIndex = 0; subMeshIndex < mesh->numSubMeshes;
        ++subMeshIndex) {
     const SubMesh *subMesh = &mesh->subMeshes[subMeshIndex];
+    const Material *material = &model->materials[subMesh->material];
+    MaterialUniforms materialUniforms = {
+        .baseColorFactor = material->baseColorFactor,
+    };
+
+    ID3D11ShaderResourceView *textureView = gDefaultTextureView;
+    if (material->baseColorTexture >= 0) {
+      textureView = model->textureViews[material->baseColorTexture];
+    }
+
+    ID3D11SamplerState *sampler = gDefaultSampler;
+    if (material->baseColorSampler >= 0) {
+      sampler = model->samplers[material->baseColorSampler];
+    }
+
+    gContext->UpdateSubresource(materialUniformBuffer, 0, NULL,
+                                &materialUniforms, 0, 0);
+
+    gContext->PSSetShaderResources(0, 1, &textureView);
+    gContext->PSSetSamplers(0, 1, &sampler);
     gContext->DrawIndexed(subMesh->numIndices,
                           subMesh->indices - model->indexBase,
                           subMesh->vertices - model->vertexBase);
@@ -693,25 +724,29 @@ static void renderMesh(const Model *model, const Mesh *mesh,
 }
 
 static void renderSceneNode(const Model *model, const SceneNode *node,
-                            ID3D11Buffer *drawUniformBuffer) {
+                            ID3D11Buffer *drawUniformBuffer,
+                            ID3D11Buffer *materialUniformBuffer) {
   if (node->mesh >= 0) {
     DrawUniforms drawUniforms = {};
     drawUniforms.modelMat = node->worldTransform.matrix;
     drawUniforms.invModelMat = mat4Inverse(drawUniforms.modelMat);
     gContext->UpdateSubresource(drawUniformBuffer, 0, NULL, &drawUniforms, 0,
                                 0);
-    renderMesh(model, &model->meshes[node->mesh], drawUniformBuffer);
+    renderMesh(model, &model->meshes[node->mesh], drawUniformBuffer,
+               materialUniformBuffer);
   }
 
   if (node->numChildNodes > 0) {
     for (int i = 0; i < node->numChildNodes; ++i) {
       const SceneNode *childNode = &model->nodes[node->childNodes[i]];
-      renderSceneNode(model, childNode, drawUniformBuffer);
+      renderSceneNode(model, childNode, drawUniformBuffer,
+                      materialUniformBuffer);
     }
   }
 }
 
-void renderModel(const Model *model, ID3D11Buffer *drawUniformBuffer) {
+void renderModel(const Model *model, ID3D11Buffer *drawUniformBuffer,
+                 ID3D11Buffer *materialUniformBuffer) {
   UINT stride = sizeof(Vertex), offset = 0;
   gContext->IASetVertexBuffers(0, 1, &model->gpuVertexBuffer, &stride, &offset);
   gContext->IASetIndexBuffer(model->gpuIndexBuffer, DXGI_FORMAT_R32_UINT, 0);
@@ -721,7 +756,7 @@ void renderModel(const Model *model, ID3D11Buffer *drawUniformBuffer) {
     const Scene *scene = &model->scenes[sceneIndex];
     for (int nodeIndex = 0; nodeIndex < scene->numNodes; ++nodeIndex) {
       const SceneNode *node = &model->nodes[scene->nodes[nodeIndex]];
-      renderSceneNode(model, node, drawUniformBuffer);
+      renderSceneNode(model, node, drawUniformBuffer, materialUniformBuffer);
     }
   }
 }

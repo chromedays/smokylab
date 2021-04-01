@@ -19,6 +19,10 @@ extern ID3D11RenderTargetView *gSwapChainRTV;
 extern ID3D11Texture2D *gSwapChainDepthStencilBuffer;
 extern ID3D11DepthStencilView *gSwapChainDSV;
 
+extern ID3D11Texture2D *gDefaultTexture;
+extern ID3D11ShaderResourceView *gDefaultTextureView;
+extern ID3D11SamplerState *gDefaultSampler;
+
 DXGI_RATIONAL queryRefreshRate(int ww, int wh, DXGI_FORMAT swapChainFormat);
 HWND getWin32WindowHandle(SDL_Window *window);
 
@@ -70,8 +74,11 @@ typedef struct _ViewUniforms {
 typedef struct _DrawUniforms {
   Mat4 modelMat;
   Mat4 invModelMat;
-  Float4 baseColor;
 } DrawUniforms;
+
+typedef struct _MaterialUniforms {
+  Float4 baseColorFactor;
+} MaterialUniforms;
 
 typedef struct _Material {
   int baseColorTexture;
@@ -130,6 +137,7 @@ typedef struct _Scene {
 typedef struct _Model {
   int numTextures;
   ID3D11Texture2D **textures;
+  ID3D11ShaderResourceView **textureViews;
 
   int numSamplers;
   ID3D11SamplerState **samplers;
@@ -161,7 +169,8 @@ typedef struct _Model {
 
 void loadGLTFModel(const char *path, Model *model);
 void destroyModel(Model *model);
-void renderModel(const Model *model, ID3D11Buffer *drawUniformBuffer);
+void renderModel(const Model *model, ID3D11Buffer *drawUniformBuffer,
+                 ID3D11Buffer *materialUniformBuffer);
 
 typedef struct _FreeLookCamera {
   Float3 pos;

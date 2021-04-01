@@ -81,6 +81,31 @@ int main(UNUSED int argc, UNUSED char **argv) {
   HR_ASSERT(gDevice->CreateDepthStencilView(gSwapChainDepthStencilBuffer, NULL,
                                             &gSwapChainDSV));
 
+  TextureDesc defaultTextureDesc = {
+      .width = 16,
+      .height = 16,
+      .bytesPerPixel = 4,
+      .format = DXGI_FORMAT_R8G8B8A8_UNORM,
+      .usage = D3D11_USAGE_IMMUTABLE,
+      .bindFlags = D3D11_BIND_SHADER_RESOURCE,
+  };
+  defaultTextureDesc.initialData =
+      MMALLOC_ARRAY(uint32_t, castI32U32(defaultTextureDesc.width *
+                                         defaultTextureDesc.height));
+  createTexture2D(&defaultTextureDesc, &gDefaultTexture);
+  MFREE(defaultTextureDesc.initialData);
+  gDevice->CreateShaderResourceView(gDefaultTexture, NULL,
+                                    &gDefaultTextureView);
+
+  D3D11_SAMPLER_DESC defaultSamplerDesc = {
+      .Filter = D3D11_FILTER_MIN_MAG_MIP_POINT,
+      .AddressU = D3D11_TEXTURE_ADDRESS_WRAP,
+      .AddressV = D3D11_TEXTURE_ADDRESS_WRAP,
+      .AddressW = D3D11_TEXTURE_ADDRESS_WRAP,
+      .MaxLOD = D3D11_FLOAT32_MAX,
+  };
+  gDevice->CreateSamplerState(&defaultSamplerDesc, &gDefaultSampler);
+
   ID3D11DepthStencilState *depthStencilState;
   D3D11_DEPTH_STENCIL_DESC depthStencilStateDesc = {
       .DepthEnable = TRUE,
@@ -129,8 +154,16 @@ int main(UNUSED int argc, UNUSED char **argv) {
   };
   createBuffer(&drawUniformBufferDesc, &drawUniformBuffer);
 
+  ID3D11Buffer *materialUniformBuffer;
+  BufferDesc materialUniformBufferDesc = {
+      .size = sizeof(MaterialUniforms),
+      .usage = D3D11_USAGE_DEFAULT,
+      .bindFlags = D3D11_BIND_CONSTANT_BUFFER,
+  };
+  createBuffer(&materialUniformBufferDesc, &materialUniformBuffer);
+
   Model model = {};
-  loadGLTFModel("../assets/models/CesiumMilkTruck", &model);
+  loadGLTFModel("../assets/models/Sponza", &model);
 
   FreeLookCamera cam = {};
 
@@ -239,7 +272,7 @@ int main(UNUSED int argc, UNUSED char **argv) {
     gContext->RSSetViewports(1, &viewport);
 
     gContext->OMSetRenderTargets(1, &gSwapChainRTV, gSwapChainDSV);
-    FLOAT clearColor[4] = {0, 0, 0, 1};
+    FLOAT clearColor[4] = {0.1f, 0.1f, 0.1f, 1};
     gContext->ClearRenderTargetView(gSwapChainRTV, clearColor);
     gContext->ClearDepthStencilView(gSwapChainDSV, D3D11_CLEAR_DEPTH, 0, 0);
 
@@ -248,13 +281,14 @@ int main(UNUSED int argc, UNUSED char **argv) {
     gContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
     useProgram(&brdfProgram);
-    ID3D11Buffer *uniformBuffers[] = {viewUniformBuffer, drawUniformBuffer};
+    ID3D11Buffer *uniformBuffers[] = {viewUniformBuffer, drawUniformBuffer,
+                                      materialUniformBuffer};
     gContext->VSSetConstantBuffers(0, ARRAY_SIZE(uniformBuffers),
                                    uniformBuffers);
     gContext->PSSetConstantBuffers(0, ARRAY_SIZE(uniformBuffers),
                                    uniformBuffers);
 
-    renderModel(&model, drawUniformBuffer);
+    renderModel(&model, drawUniformBuffer, materialUniformBuffer);
 
     renderGUI();
 
@@ -265,6 +299,7 @@ int main(UNUSED int argc, UNUSED char **argv) {
 
   destroyModel(&model);
 
+  COM_RELEASE(materialUniformBuffer);
   COM_RELEASE(drawUniformBuffer);
   COM_RELEASE(viewUniformBuffer);
 
@@ -273,6 +308,10 @@ int main(UNUSED int argc, UNUSED char **argv) {
 
   COM_RELEASE(rasterizerState);
   COM_RELEASE(depthStencilState);
+
+  COM_RELEASE(gDefaultSampler);
+  COM_RELEASE(gDefaultTextureView);
+  COM_RELEASE(gDefaultTexture);
   COM_RELEASE(gSwapChainDSV);
   COM_RELEASE(gSwapChainDepthStencilBuffer);
   COM_RELEASE(gSwapChainRTV);
