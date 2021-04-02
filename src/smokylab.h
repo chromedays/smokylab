@@ -64,13 +64,20 @@ typedef struct _TextureDesc {
   bool generateMipMaps;
   void *initialData;
 } TextureDesc;
-void createTexture2D(const TextureDesc *desc, ID3D11Texture2D **texture);
-void createIBLTexture(const char *baseName, int *skyMapWidth, int *skyMapHeight,
-                      ID3D11Texture2D **skyboxTex, ID3D11Texture2D **irrTex);
+void createTexture2D(const TextureDesc *desc, ID3D11Texture2D **texture,
+                     ID3D11ShaderResourceView **textureView);
+void createIBLTexture(const char *baseName, int *skyWidth, int *skyHeight,
+                      ID3D11Texture2D **skyTex, ID3D11Texture2D **irrTex,
+                      ID3D11ShaderResourceView **skyTexView,
+                      ID3D11ShaderResourceView **irrTexView);
 
+#define NUM_SAMPLES 40
 typedef struct _ViewUniforms {
   Mat4 viewMat;
   Mat4 projMat;
+  Float4 viewPos;
+  Int4 skySize;
+  Float4 randomPoints[NUM_SAMPLES];
 } ViewUniforms;
 
 typedef struct _DrawUniforms {
@@ -187,5 +194,7 @@ Mat4 getViewMatrix(const FreeLookCamera *cam);
 
 bool processKeyboardEvent(const SDL_Event *event, SDL_Keycode keycode,
                           bool keyDown);
+
+void generateHammersleySequence(int n, Float4 *values);
 
 C_INTERFACE_END

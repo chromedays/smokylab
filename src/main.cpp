@@ -92,13 +92,15 @@ int main(UNUSED int argc, UNUSED char **argv) {
   defaultTextureDesc.initialData =
       MMALLOC_ARRAY(uint32_t, castI32U32(defaultTextureDesc.width *
                                          defaultTextureDesc.height));
-  createTexture2D(&defaultTextureDesc, &gDefaultTexture);
+  for (int i = 0; i < defaultTextureDesc.width * defaultTextureDesc.height;
+       ++i) {
+    ((uint32_t *)defaultTextureDesc.initialData)[i] = 0xffffffff;
+  }
+  createTexture2D(&defaultTextureDesc, &gDefaultTexture, &gDefaultTextureView);
   MFREE(defaultTextureDesc.initialData);
-  gDevice->CreateShaderResourceView(gDefaultTexture, NULL,
-                                    &gDefaultTextureView);
 
   D3D11_SAMPLER_DESC defaultSamplerDesc = {
-      .Filter = D3D11_FILTER_MIN_POINT_MAG_MIP_LINEAR,
+      .Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR,
       .AddressU = D3D11_TEXTURE_ADDRESS_WRAP,
       .AddressV = D3D11_TEXTURE_ADDRESS_WRAP,
       .AddressW = D3D11_TEXTURE_ADDRESS_WRAP,
@@ -174,6 +176,7 @@ int main(UNUSED int argc, UNUSED char **argv) {
 
   Model model = {};
   loadGLTFModel("../assets/models/EnvironmentTest", &model);
+  // loadGLTFModel("../assets/models/Sponza", &model);
 
   // clang-format off
   Float4 skyboxVertices[8] = {
@@ -222,14 +225,18 @@ int main(UNUSED int argc, UNUSED char **argv) {
   int skyWidth, skyHeight;
   ID3D11Texture2D *skyTex, *irrTex;
   ID3D11ShaderResourceView *skyView, *irrView;
-  createIBLTexture("Newport_Loft", &skyWidth, &skyHeight, &skyTex, &irrTex);
-  HR_ASSERT(gDevice->CreateShaderResourceView(skyTex, NULL, &skyView));
-  HR_ASSERT(gDevice->CreateShaderResourceView(irrTex, NULL, &irrView));
+  createIBLTexture("Newport_Loft", &skyWidth, &skyHeight, &skyTex, &irrTex,
+                   &skyView, &irrView);
 
   FreeLookCamera cam = {};
 
   initGUI(window, gDevice, gContext);
   GUI gui = {};
+
+  ViewUniforms viewUniforms = {
+      .skySize = {skyWidth, skyHeight},
+  };
+  generateHammersleySequence(NUM_SAMPLES, viewUniforms.randomPoints);
 
   LOG("Entering main loop.");
 
@@ -308,10 +315,11 @@ int main(UNUSED int argc, UNUSED char **argv) {
                          dt;
     cam.pos += camMovement;
 
-    ViewUniforms viewUniforms = {
-        .viewMat = getViewMatrix(&cam),
-        .projMat = mat4Perspective(75, (float)ww / (float)wh, 0.1f, 500),
-    };
+    viewUniforms.viewPos.xyz = cam.pos;
+    viewUniforms.viewMat = getViewMatrix(&cam);
+    viewUniforms.projMat =
+        mat4Perspective(75, (float)ww / (float)wh, 0.1f, 500);
+
     gContext->UpdateSubresource(viewUniformBuffer, 0, NULL, &viewUniforms, 0,
                                 0);
 

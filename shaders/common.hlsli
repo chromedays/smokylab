@@ -6,9 +6,23 @@ float2 sampleEquirectangularMap(float3 normal) {
     return texcoord;
 }
 
+float3 sampleNormalFromLongLat(float2 uv) {
+    float3 normal = float3(cos(PI2* (0.5 - uv.x))*sin(PI * uv.y), cos(PI * uv.y), sin(PI2*(0.5 - uv.x))*sin(PI*uv.y));
+    return normal;
+}
+
+float dotClamp(float3 a, float3 b) {
+    return max(dot(a, b), 0.000001);
+}
+
+#define NUM_SAMPLES 40
+
 cbuffer ViewUniforms : register(b0) {
     float4x4 viewMat;
     float4x4 projMat;
+    float4 viewPos;
+    int4 skySize;
+    float4 randomPoints[NUM_SAMPLES];
 };
 
 cbuffer DrawUniforms : register(b1) {

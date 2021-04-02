@@ -18,6 +18,9 @@ float radToDeg(float rad);
 typedef float Float2 __attribute__((ext_vector_type(2)));
 typedef float Float3 __attribute__((ext_vector_type(3)));
 typedef float Float4 __attribute__((ext_vector_type(4)));
+typedef int Int2 __attribute__((ext_vector_type(2)));
+typedef int Int3 __attribute__((ext_vector_type(3)));
+typedef int Int4 __attribute__((ext_vector_type(4)));
 
 float float2Dot(const Float2 a, const Float2 b);
 

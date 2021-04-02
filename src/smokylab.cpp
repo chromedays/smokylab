@@ -214,7 +214,8 @@ void createBuffer(const BufferDesc *desc, ID3D11Buffer **buffer) {
   }
 }
 
-void createTexture2D(const TextureDesc *desc, ID3D11Texture2D **texture) {
+void createTexture2D(const TextureDesc *desc, ID3D11Texture2D **texture,
+                     ID3D11ShaderResourceView **textureView) {
   D3D11_TEXTURE2D_DESC textureDesc = {
       .Width = castI32U32(desc->width),
       .Height = castI32U32(desc->height),
@@ -230,27 +231,52 @@ void createTexture2D(const TextureDesc *desc, ID3D11Texture2D **texture) {
       .BindFlags = desc->bindFlags,
       .CPUAccessFlags = 0,
   };
-  D3D11_SUBRESOURCE_DATA initialData = {
-      .pSysMem = desc->initialData,
-      .SysMemPitch = castI32U32(desc->width) * castI32U32(desc->bytesPerPixel),
-  };
-  HR_ASSERT(gDevice->CreateTexture2D(&textureDesc, &initialData, texture));
+
+  UINT pitch = castI32U32(desc->width) * castI32U32(desc->bytesPerPixel);
+
+  if (desc->generateMipMaps) {
+    textureDesc.MipLevels =
+        (uint32_t)floorf(log2f((float)MAX(desc->width, desc->height)));
+    textureDesc.Usage = D3D11_USAGE_DEFAULT;
+    textureDesc.BindFlags |=
+        (D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE);
+    textureDesc.MiscFlags = D3D11_RESOURCE_MISC_GENERATE_MIPS;
+
+    HR_ASSERT(gDevice->CreateTexture2D(&textureDesc, NULL, texture));
+    gContext->UpdateSubresource(*texture, 0, 0, desc->initialData, pitch, 0);
+  } else {
+    D3D11_SUBRESOURCE_DATA initialData = {
+        .pSysMem = desc->initialData,
+        .SysMemPitch = pitch,
+    };
+    HR_ASSERT(gDevice->CreateTexture2D(&textureDesc, &initialData, texture));
+  }
+
+  if (textureView) {
+    HR_ASSERT(gDevice->CreateShaderResourceView(*texture, NULL, textureView));
+
+    if (desc->generateMipMaps) {
+      gContext->GenerateMips(*textureView);
+    }
+  }
 }
 
-void createIBLTexture(const char *baseName, int *skyMapWidth, int *skyMapHeight,
-                      ID3D11Texture2D **skyboxTex, ID3D11Texture2D **irrTex) {
+void createIBLTexture(const char *baseName, int *skyWidth, int *skyHeight,
+                      ID3D11Texture2D **skyTex, ID3D11Texture2D **irrTex,
+                      ID3D11ShaderResourceView **skyTexView,
+                      ID3D11ShaderResourceView **irrTexView) {
   String basePath = {0};
   copyBasePath(&basePath);
   appendPathCStr(&basePath, "../assets/ibl");
   appendPathCStr(&basePath, baseName);
 
-  String skyboxPath = {0};
-  copyString(&skyboxPath, &basePath);
-  appendCStr(&skyboxPath, ".hdr");
+  String skyPath = {0};
+  copyString(&skyPath, &basePath);
+  appendCStr(&skyPath, ".hdr");
   int w, h, nc;
-  void *pixels = stbi_loadf(skyboxPath.buf, &w, &h, &nc, STBI_rgb_alpha);
-  *skyMapWidth = w;
-  *skyMapHeight = h;
+  void *pixels = stbi_loadf(skyPath.buf, &w, &h, &nc, STBI_rgb_alpha);
+  *skyWidth = w;
+  *skyHeight = h;
   ASSERT(pixels);
   TextureDesc skyTexDesc = {
       .width = w,
@@ -262,7 +288,7 @@ void createIBLTexture(const char *baseName, int *skyMapWidth, int *skyMapHeight,
       .generateMipMaps = true,
       .initialData = pixels,
   };
-  createTexture2D(&skyTexDesc, skyboxTex);
+  createTexture2D(&skyTexDesc, skyTex, skyTexView);
 
   String irrPath = {0};
   copyString(&irrPath, &basePath);
@@ -277,13 +303,12 @@ void createIBLTexture(const char *baseName, int *skyMapWidth, int *skyMapHeight,
       .format = DXGI_FORMAT_R32G32B32A32_FLOAT,
       .usage = D3D11_USAGE_IMMUTABLE,
       .bindFlags = D3D11_BIND_SHADER_RESOURCE,
-      .generateMipMaps = true,
       .initialData = pixels,
   };
-  createTexture2D(&irrTexDesc, irrTex);
+  createTexture2D(&irrTexDesc, irrTex, irrTexView);
 
   destroyString(&irrPath);
-  destroyString(&skyboxPath);
+  destroyString(&skyPath);
   destroyString(&basePath);
 }
 
@@ -351,9 +376,8 @@ void loadGLTFModel(const char *path, Model *model) {
           .bindFlags = D3D11_BIND_SHADER_RESOURCE,
           .initialData = data,
       };
-      createTexture2D(&desc, &model->textures[textureIndex]);
-      gDevice->CreateShaderResourceView(model->textures[textureIndex], NULL,
-                                        &model->textureViews[textureIndex]);
+      createTexture2D(&desc, &model->textures[textureIndex],
+                      &model->textureViews[textureIndex]);
 
       stbi_image_free(data);
     }
@@ -852,4 +876,29 @@ bool processKeyboardEvent(const SDL_Event *event, SDL_Keycode keycode,
     keyDown = (event->key.state == SDL_PRESSED);
   }
   return keyDown;
+}
+
+void generateHammersleySequence(int n, Float4 *values) {
+  for (int k = 0; k < n; ++k) {
+    float p = 0.5f;
+    int kk = k;
+    float u = 0.5f;
+    while (kk) {
+      if (kk & 1) {
+        u += p;
+      }
+      p *= 0.5f;
+      kk >>= 1;
+    }
+    float v = ((float)k + 0.5f) / (float)n;
+    values[k].xy = {u, v};
+    // LOG("%f, %f", u, v);
+  }
+
+  Float2 avg = {0};
+  for (int i = 0; i < n; ++i) {
+    avg.xy += values[i].xy;
+  }
+  avg /= (float)n;
+  // LOG("Average: %f, %f", avg.x, avg.y);
 }
