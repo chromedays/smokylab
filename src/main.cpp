@@ -98,7 +98,7 @@ int main(UNUSED int argc, UNUSED char **argv) {
                                     &gDefaultTextureView);
 
   D3D11_SAMPLER_DESC defaultSamplerDesc = {
-      .Filter = D3D11_FILTER_MIN_MAG_MIP_POINT,
+      .Filter = D3D11_FILTER_MIN_POINT_MAG_MIP_LINEAR,
       .AddressU = D3D11_TEXTURE_ADDRESS_WRAP,
       .AddressV = D3D11_TEXTURE_ADDRESS_WRAP,
       .AddressW = D3D11_TEXTURE_ADDRESS_WRAP,
@@ -116,6 +116,16 @@ int main(UNUSED int argc, UNUSED char **argv) {
   HR_ASSERT(gDevice->CreateDepthStencilState(&depthStencilStateDesc,
                                              &depthStencilState));
 
+  ID3D11DepthStencilState *skyDepthStencilState;
+  D3D11_DEPTH_STENCIL_DESC skyDepthStencilStateDesc = {
+      .DepthEnable = TRUE,
+      .DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ZERO,
+      .DepthFunc = D3D11_COMPARISON_GREATER_EQUAL,
+      .StencilEnable = FALSE,
+  };
+  HR_ASSERT(gDevice->CreateDepthStencilState(&skyDepthStencilStateDesc,
+                                             &skyDepthStencilState));
+
   ID3D11RasterizerState *rasterizerState;
   D3D11_RASTERIZER_DESC rasterizerStateDesc = {
       .FillMode = D3D11_FILL_SOLID,
@@ -132,11 +142,11 @@ int main(UNUSED int argc, UNUSED char **argv) {
   HR_ASSERT(
       gDevice->CreateRasterizerState(&rasterizerStateDesc, &rasterizerState));
 
-  ShaderProgram fstProgram = {};
-  createProgram("fst", &fstProgram);
-
   ShaderProgram brdfProgram = {};
   createProgram("brdf", &brdfProgram);
+
+  ShaderProgram skyProgram = {};
+  createProgram("sky", &skyProgram);
 
   ID3D11Buffer *viewUniformBuffer;
   BufferDesc viewUniformBufferDesc = {
@@ -163,7 +173,58 @@ int main(UNUSED int argc, UNUSED char **argv) {
   createBuffer(&materialUniformBufferDesc, &materialUniformBuffer);
 
   Model model = {};
-  loadGLTFModel("../assets/models/Sponza", &model);
+  loadGLTFModel("../assets/models/EnvironmentTest", &model);
+
+  // clang-format off
+  Float4 skyboxVertices[8] = {
+      {-1, -1, -1},
+      {-1, -1,  1},
+      { 1, -1,  1},
+      { 1, -1, -1},
+
+      {-1,  1, -1},
+      {-1,  1,  1},
+      { 1,  1,  1},
+      { 1,  1, -1},
+  };
+
+  uint32_t skyboxIndices[36] = {
+      // Top
+      4, 7, 6, 6, 5, 4,
+      // Bottom
+      1, 2, 3, 3, 0, 1,
+      // Front
+      7, 4, 0, 0, 3, 7,
+      // Back
+      5, 6, 2, 2, 1, 5,
+      // Left
+      4, 5, 1, 1, 0, 4,
+      // Right
+      6, 7, 3, 3, 2, 6,
+  };
+  // clang-format on
+  ID3D11Buffer *skyVB, *skyIB;
+  BufferDesc skyVBDesc = {
+      .size = sizeof(skyboxVertices),
+      .initialData = skyboxVertices,
+      .usage = D3D11_USAGE_IMMUTABLE,
+      .bindFlags = D3D11_BIND_VERTEX_BUFFER,
+  };
+  createBuffer(&skyVBDesc, &skyVB);
+  BufferDesc skyIBDesc = {
+      .size = sizeof(skyboxIndices),
+      .initialData = skyboxIndices,
+      .usage = D3D11_USAGE_IMMUTABLE,
+      .bindFlags = D3D11_BIND_INDEX_BUFFER,
+  };
+  createBuffer(&skyIBDesc, &skyIB);
+
+  int skyWidth, skyHeight;
+  ID3D11Texture2D *skyTex, *irrTex;
+  ID3D11ShaderResourceView *skyView, *irrView;
+  createIBLTexture("Newport_Loft", &skyWidth, &skyHeight, &skyTex, &irrTex);
+  HR_ASSERT(gDevice->CreateShaderResourceView(skyTex, NULL, &skyView));
+  HR_ASSERT(gDevice->CreateShaderResourceView(irrTex, NULL, &irrView));
 
   FreeLookCamera cam = {};
 
@@ -261,6 +322,13 @@ int main(UNUSED int argc, UNUSED char **argv) {
     gContext->UpdateSubresource(drawUniformBuffer, 0, NULL, &drawUniforms, 0,
                                 0);
 
+    ID3D11Buffer *uniformBuffers[] = {viewUniformBuffer, drawUniformBuffer,
+                                      materialUniformBuffer};
+    gContext->VSSetConstantBuffers(0, ARRAY_SIZE(uniformBuffers),
+                                   uniformBuffers);
+    gContext->PSSetConstantBuffers(0, ARRAY_SIZE(uniformBuffers),
+                                   uniformBuffers);
+
     D3D11_VIEWPORT viewport = {
         .TopLeftX = 0,
         .TopLeftY = 0,
@@ -276,17 +344,24 @@ int main(UNUSED int argc, UNUSED char **argv) {
     gContext->ClearRenderTargetView(gSwapChainRTV, clearColor);
     gContext->ClearDepthStencilView(gSwapChainDSV, D3D11_CLEAR_DEPTH, 0, 0);
 
-    gContext->OMSetDepthStencilState(depthStencilState, 0);
     gContext->RSSetState(rasterizerState);
     gContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
+    ID3D11ShaderResourceView *skyResources[] = {skyView, irrView};
+    ID3D11SamplerState *skySamplers[] = {gDefaultSampler, gDefaultSampler};
+    gContext->PSSetShaderResources(0, ARRAY_SIZE(skyResources), skyResources);
+    gContext->PSSetSamplers(0, ARRAY_SIZE(skySamplers), skySamplers);
+
+    // Render sky
+    gContext->OMSetDepthStencilState(skyDepthStencilState, 0);
+    useProgram(&skyProgram);
+    UINT stride = sizeof(Float4), offset = 0;
+    gContext->IASetVertexBuffers(0, 1, &skyVB, &stride, &offset);
+    gContext->IASetIndexBuffer(skyIB, DXGI_FORMAT_R32_UINT, 0);
+    gContext->DrawIndexed(ARRAY_SIZE(skyboxIndices), 0, 0);
+
+    gContext->OMSetDepthStencilState(depthStencilState, 0);
     useProgram(&brdfProgram);
-    ID3D11Buffer *uniformBuffers[] = {viewUniformBuffer, drawUniformBuffer,
-                                      materialUniformBuffer};
-    gContext->VSSetConstantBuffers(0, ARRAY_SIZE(uniformBuffers),
-                                   uniformBuffers);
-    gContext->PSSetConstantBuffers(0, ARRAY_SIZE(uniformBuffers),
-                                   uniformBuffers);
 
     renderModel(&model, drawUniformBuffer, materialUniformBuffer);
 
@@ -297,16 +372,25 @@ int main(UNUSED int argc, UNUSED char **argv) {
 
   destroyGUI();
 
+  COM_RELEASE(irrView);
+  COM_RELEASE(skyView);
+  COM_RELEASE(irrTex);
+  COM_RELEASE(skyTex);
+
+  COM_RELEASE(skyIB);
+  COM_RELEASE(skyVB);
+
   destroyModel(&model);
 
   COM_RELEASE(materialUniformBuffer);
   COM_RELEASE(drawUniformBuffer);
   COM_RELEASE(viewUniformBuffer);
 
+  destroyProgram(&skyProgram);
   destroyProgram(&brdfProgram);
-  destroyProgram(&fstProgram);
 
   COM_RELEASE(rasterizerState);
+  COM_RELEASE(skyDepthStencilState);
   COM_RELEASE(depthStencilState);
 
   COM_RELEASE(gDefaultSampler);

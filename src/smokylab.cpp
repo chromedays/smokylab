@@ -237,6 +237,56 @@ void createTexture2D(const TextureDesc *desc, ID3D11Texture2D **texture) {
   HR_ASSERT(gDevice->CreateTexture2D(&textureDesc, &initialData, texture));
 }
 
+void createIBLTexture(const char *baseName, int *skyMapWidth, int *skyMapHeight,
+                      ID3D11Texture2D **skyboxTex, ID3D11Texture2D **irrTex) {
+  String basePath = {0};
+  copyBasePath(&basePath);
+  appendPathCStr(&basePath, "../assets/ibl");
+  appendPathCStr(&basePath, baseName);
+
+  String skyboxPath = {0};
+  copyString(&skyboxPath, &basePath);
+  appendCStr(&skyboxPath, ".hdr");
+  int w, h, nc;
+  void *pixels = stbi_loadf(skyboxPath.buf, &w, &h, &nc, STBI_rgb_alpha);
+  *skyMapWidth = w;
+  *skyMapHeight = h;
+  ASSERT(pixels);
+  TextureDesc skyTexDesc = {
+      .width = w,
+      .height = h,
+      .bytesPerPixel = 16,
+      .format = DXGI_FORMAT_R32G32B32A32_FLOAT,
+      .usage = D3D11_USAGE_IMMUTABLE,
+      .bindFlags = D3D11_BIND_SHADER_RESOURCE,
+      .generateMipMaps = true,
+      .initialData = pixels,
+  };
+  createTexture2D(&skyTexDesc, skyboxTex);
+
+  String irrPath = {0};
+  copyString(&irrPath, &basePath);
+  appendCStr(&irrPath, ".irr.hdr");
+
+  pixels = stbi_loadf(irrPath.buf, &w, &h, &nc, STBI_rgb_alpha);
+  ASSERT(pixels);
+  TextureDesc irrTexDesc = {
+      .width = w,
+      .height = h,
+      .bytesPerPixel = 16,
+      .format = DXGI_FORMAT_R32G32B32A32_FLOAT,
+      .usage = D3D11_USAGE_IMMUTABLE,
+      .bindFlags = D3D11_BIND_SHADER_RESOURCE,
+      .generateMipMaps = true,
+      .initialData = pixels,
+  };
+  createTexture2D(&irrTexDesc, irrTex);
+
+  destroyString(&irrPath);
+  destroyString(&skyboxPath);
+  destroyString(&basePath);
+}
+
 void loadGLTFModel(const char *path, Model *model) {
   String pathString = {0};
   copyStringFromCStr(&pathString, path);
@@ -700,24 +750,42 @@ static void renderMesh(const Model *model, const Mesh *mesh,
     const Material *material = &model->materials[subMesh->material];
     MaterialUniforms materialUniforms = {
         .baseColorFactor = material->baseColorFactor,
-    };
+        .metallicRoughnessFactor = {material->metallicFactor,
+                                    material->roughnessFactor}};
 
-    ID3D11ShaderResourceView *textureView = gDefaultTextureView;
+    ID3D11ShaderResourceView *baseColorTextureView = gDefaultTextureView;
     if (material->baseColorTexture >= 0) {
-      textureView = model->textureViews[material->baseColorTexture];
+      baseColorTextureView = model->textureViews[material->baseColorTexture];
     }
 
-    ID3D11SamplerState *sampler = gDefaultSampler;
+    ID3D11SamplerState *baseColorSampler = gDefaultSampler;
     if (material->baseColorSampler >= 0) {
-      sampler = model->samplers[material->baseColorSampler];
+      baseColorSampler = model->samplers[material->baseColorSampler];
+    }
+
+    ID3D11ShaderResourceView *metallicRoughnessTextureView =
+        gDefaultTextureView;
+    if (material->metallicRoughnessTexture >= 0) {
+      metallicRoughnessTextureView =
+          model->textureViews[material->metallicRoughnessTexture];
+    }
+
+    ID3D11SamplerState *metallicRoughnessSampler = gDefaultSampler;
+    if (material->metallicRoughnessSampler >= 0) {
+      metallicRoughnessSampler =
+          model->samplers[material->metallicRoughnessSampler];
     }
 
     gContext->UpdateSubresource(materialUniformBuffer, 0, NULL,
                                 &materialUniforms, 0, 0);
 
-    gContext->PSSetShaderResources(0, 1, &textureView);
-    gContext->PSSetSamplers(0, 1, &sampler);
-    gContext->DrawIndexed(subMesh->numIndices,
+    ID3D11ShaderResourceView *textureViews[] = {baseColorTextureView,
+                                                metallicRoughnessTextureView};
+    ID3D11SamplerState *samplers[] = {baseColorSampler,
+                                      metallicRoughnessSampler};
+    gContext->PSSetShaderResources(2, ARRAY_SIZE(textureViews), textureViews);
+    gContext->PSSetSamplers(2, ARRAY_SIZE(samplers), samplers);
+    gContext->DrawIndexed(castI32U32(subMesh->numIndices),
                           subMesh->indices - model->indexBase,
                           subMesh->vertices - model->vertexBase);
   }

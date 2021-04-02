@@ -65,6 +65,8 @@ typedef struct _TextureDesc {
   void *initialData;
 } TextureDesc;
 void createTexture2D(const TextureDesc *desc, ID3D11Texture2D **texture);
+void createIBLTexture(const char *baseName, int *skyMapWidth, int *skyMapHeight,
+                      ID3D11Texture2D **skyboxTex, ID3D11Texture2D **irrTex);
 
 typedef struct _ViewUniforms {
   Mat4 viewMat;
@@ -78,13 +80,14 @@ typedef struct _DrawUniforms {
 
 typedef struct _MaterialUniforms {
   Float4 baseColorFactor;
+  Float4 metallicRoughnessFactor;
 } MaterialUniforms;
 
 typedef struct _Material {
   int baseColorTexture;
   int baseColorSampler;
   Float4 baseColorFactor;
-  int metallicRoughnessTexture;
+  int metallicRoughnessTexture; // r: ao (optional), g: roughness, b: metallic
   int metallicRoughnessSampler;
   float metallicFactor;
   float roughnessFactor;

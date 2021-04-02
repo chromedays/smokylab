@@ -11,4 +11,4 @@ function buildComputeShader {
 }
 
 buildComputeShader "brdf"
-buildComputeShader "fst"
+buildComputeShader "sky"

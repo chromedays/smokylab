@@ -1,4 +1,5 @@
 #pragma pack_matrix(row_major)
+#include "common.hlsli"
 
 struct VS_INPUT {
     float4 pos : POSITION;
@@ -14,23 +15,6 @@ struct FS_INPUT {
     float3 normalWorld : NORMAL;
 };
 
-cbuffer ViewUniforms : register(b0) {
-    float4x4 viewMat;
-    float4x4 projMat;
-};
-
-cbuffer DrawUniforms : register(b1) {
-    float4x4 modelMat;
-    float4x4 invModelMat;
-};
-
-cbuffer MaterialUniforms : register(b2) {
-    float4 baseColorFactor;
-};
-
-Texture2D<float4> baseColorTexture : register(t0);
-SamplerState baseColorSampler : register(s0);
-
 FS_INPUT vert(VS_INPUT input) {
     FS_INPUT output;
     
@@ -45,5 +29,11 @@ FS_INPUT vert(VS_INPUT input) {
 
 float4 frag(FS_INPUT input) : SV_Target {
     float4 baseColor = baseColorFactor * baseColorTexture.Sample(baseColorSampler, input.texcoord);
-    return float4(baseColor.xyz, 1);
+    float2 metallicRoughness =
+        metallicRoughnessFactor.xy * metallicRoughnessTexture.Sample(metallicRoughnessSampler, input.texcoord).zy;
+    float3 irradiance = irrTexture.Sample(irrSampler, sampleEquirectangularMap(input.normalWorld)).xyz;
+
+    float3 color = irradiance;
+    color = pow(color, 1 / 2.2);
+    return float4(color, 1);
 }
