@@ -892,7 +892,7 @@ void generateHammersleySequence(int n, Float4 *values) {
     }
     float v = ((float)k + 0.5f) / (float)n;
     values[k].xy = {u, v};
-    // LOG("%f, %f", u, v);
+    LOG("%f, %f", u, v);
   }
 
   Float2 avg = {0};

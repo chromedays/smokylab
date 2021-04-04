@@ -78,6 +78,7 @@ typedef struct _ViewUniforms {
   Float4 viewPos;
   Int4 skySize;
   Float4 randomPoints[NUM_SAMPLES];
+  Float4 exposure;
 } ViewUniforms;
 
 typedef struct _DrawUniforms {

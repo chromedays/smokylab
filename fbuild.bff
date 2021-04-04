@@ -1,6 +1,6 @@
 .VSVersion = '14.29.29917'
 .VSEdition = 'Preview'
-.WindowsSDKVersion = '10.0.18362.0'
+.WindowsSDKVersion = '10.0.19041.0'
 .VSBinPath_x64 = 'C:\Program Files (x86)\Microsoft Visual Studio\2019\$VSEdition$\VC\Tools\MSVC\$VSVersion$\bin\Hostx64\x64'
 .VSLLVMPath_x64 = 'C:\Program Files (x86)\Microsoft Visual Studio\2019\$VSEdition$\VC\Tools\Llvm\x64\bin'
 .VSIncludePath = 'C:\Program Files (x86)\Microsoft Visual Studio\2019\$VSEdition$\VC\Tools\MSVC\$VSVersion$\include'
@@ -30,7 +30,7 @@ Compiler('Compiler-Clang') {
 
     .compiler = 'Compiler-Clang'
     .linker = '$VSLLVMPath_x64$\lld-link.exe'
-    .compilerOptions = ' -o "%2" "%1" -c -Wall -Wno-old-style-cast -Wno-c++98-compat-pedantic -fdiagnostics-absolute-paths -DDEBUG'
+    .compilerOptions = ' -o "%2" "%1" -c -Od -Wall -Wno-old-style-cast -Wno-c++98-compat-pedantic -fdiagnostics-absolute-paths -DDEBUG'
 
     .cCompilerFlags = ' '
     .cppCompilerFlags = ' '

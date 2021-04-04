@@ -228,13 +228,20 @@ int main(UNUSED int argc, UNUSED char **argv) {
   createIBLTexture("Newport_Loft", &skyWidth, &skyHeight, &skyTex, &irrTex,
                    &skyView, &irrView);
 
-  FreeLookCamera cam = {};
+  FreeLookCamera cam = {
+      .pos = {-1.753f, 3.935f, 7.364f},
+      .yaw = -176.4f,
+      .pitch = 1.6f,
+  };
 
   initGUI(window, gDevice, gContext);
-  GUI gui = {};
+  GUI gui = {
+      .exposure = 1,
+  };
 
   ViewUniforms viewUniforms = {
       .skySize = {skyWidth, skyHeight},
+      .exposure = {1},
   };
   generateHammersleySequence(NUM_SAMPLES, viewUniforms.randomPoints);
 
@@ -270,7 +277,11 @@ int main(UNUSED int argc, UNUSED char **argv) {
       }
     }
 
+    // LOG("(%f %f %f), (%f %f)", cam.pos.x, cam.pos.y, cam.pos.z, cam.yaw,
+    //     cam.pitch);
+
     updateGUI(window, &gui);
+    viewUniforms.exposure.x = gui.exposure;
 
     float dt = ct_time();
 
@@ -318,7 +329,7 @@ int main(UNUSED int argc, UNUSED char **argv) {
     viewUniforms.viewPos.xyz = cam.pos;
     viewUniforms.viewMat = getViewMatrix(&cam);
     viewUniforms.projMat =
-        mat4Perspective(75, (float)ww / (float)wh, 0.1f, 500);
+        mat4Perspective(60, (float)ww / (float)wh, 0.1f, 500);
 
     gContext->UpdateSubresource(viewUniformBuffer, 0, NULL, &viewUniforms, 0,
                                 0);

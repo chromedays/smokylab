@@ -24,6 +24,6 @@ float4 frag(FS_INPUT input) : SV_Target {
     float3 normal = normalize(input.posModel);
     float2 texcoord = sampleEquirectangularMap(normal);
     float3 color = skyTexture.SampleLevel(skySampler, texcoord, 0).xyz;
-
+    color = (exposure.x * color) / (exposure.x * color + float3(1, 1, 1));
     return float4(pow(color, 1 / 2.2), 1);
 }
