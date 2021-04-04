@@ -107,13 +107,11 @@ float4 frag(FS_INPUT input) : SV_Target {
 
         float D = ggxDistribution(a, NdotH);
         float lod = max(lodParam1 - 0.5 * log2(max(D, 0.00001)), 0);
-        // lod *= 0.3;
         float2 skyTexcoord = sampleEquirectangularMap(L);
         float3 iblSpecular = skyTexture.SampleLevel(skySampler, skyTexcoord, lod).xyz;
         float3 F = schlickFresnel(VdotH, F0);
         float G = ggxSmithGeometry(NdotL, NdotV, a);
         specular += (iblSpecular * F * G * NdotL) / (4 * NdotL * NdotV);
-        // specular += xi.y.xxx;
     }
     specular /= NUM_SAMPLES;
 
@@ -123,7 +121,6 @@ float4 frag(FS_INPUT input) : SV_Target {
     kd *= (1 - metallic);
 
     float3 color = kd * diffuse + ks * specular;
-    // color = ks * specular;
     color = (exposure.x * color) / (exposure.x * color + float3(1, 1, 1));
     color = pow(color, 1 / 2.2);
     // color = specular;
