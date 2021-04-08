@@ -374,6 +374,7 @@ void loadGLTFModel(const char *path, Model *model) {
           .format = DXGI_FORMAT_R8G8B8A8_UNORM,
           .usage = D3D11_USAGE_IMMUTABLE,
           .bindFlags = D3D11_BIND_SHADER_RESOURCE,
+          .generateMipMaps = true,
           .initialData = data,
       };
       createTexture2D(&desc, &model->textures[textureIndex],
