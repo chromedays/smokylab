@@ -36,7 +36,7 @@ DXGI_RATIONAL queryRefreshRate(int ww, int wh, DXGI_FORMAT swapChainFormat) {
       swapChainFormat, DXGI_ENUM_MODES_INTERLACED, &numDisplayModes, NULL));
 
   DXGI_MODE_DESC *displayModes =
-      MMALLOC_ARRAY_UNINITIALIZED(DXGI_MODE_DESC, numDisplayModes);
+      MMALLOC_ARRAY_UNINITIALIZED(DXGI_MODE_DESC, castU32I32(numDisplayModes));
 
   HR_ASSERT(adapterOutput->GetDisplayModeList(swapChainFormat,
                                               DXGI_ENUM_MODES_INTERLACED,
@@ -70,7 +70,7 @@ static void readFile(const String *filePath, void **data, int *size) {
                          FILE_ATTRIBUTE_NORMAL, 0);
   ASSERT(f != INVALID_HANDLE_VALUE);
   DWORD fileSize = GetFileSize(f, NULL);
-  *data = MMALLOC_ARRAY_UNINITIALIZED(uint8_t, fileSize);
+  *data = MMALLOC_ARRAY_UNINITIALIZED(uint8_t, castU32I32(fileSize));
   DWORD bytesRead;
   ReadFile(f, *data, fileSize, &bytesRead, NULL);
   ASSERT(fileSize == bytesRead);
@@ -100,8 +100,8 @@ void createProgram(const char *baseName, ShaderProgram *program) {
     D3D11_SHADER_DESC shaderDesc;
     HR_ASSERT(refl->GetDesc(&shaderDesc));
 
-    D3D11_INPUT_ELEMENT_DESC *inputAttribs =
-        MMALLOC_ARRAY(D3D11_INPUT_ELEMENT_DESC, shaderDesc.InputParameters);
+    D3D11_INPUT_ELEMENT_DESC *inputAttribs = MMALLOC_ARRAY(
+        D3D11_INPUT_ELEMENT_DESC, castU32I32(shaderDesc.InputParameters));
 
     for (UINT i = 0; i < shaderDesc.InputParameters; ++i) {
       D3D11_SIGNATURE_PARAMETER_DESC paramDesc;
@@ -265,12 +265,12 @@ void createIBLTexture(const char *baseName, int *skyWidth, int *skyHeight,
                       ID3D11Texture2D **skyTex, ID3D11Texture2D **irrTex,
                       ID3D11ShaderResourceView **skyTexView,
                       ID3D11ShaderResourceView **irrTexView) {
-  String basePath = {0};
+  String basePath = {};
   copyBasePath(&basePath);
   appendPathCStr(&basePath, "../assets/ibl");
   appendPathCStr(&basePath, baseName);
 
-  String skyPath = {0};
+  String skyPath = {};
   copyString(&skyPath, &basePath);
   appendCStr(&skyPath, ".hdr");
   int w, h, nc;
@@ -290,7 +290,7 @@ void createIBLTexture(const char *baseName, int *skyWidth, int *skyHeight,
   };
   createTexture2D(&skyTexDesc, skyTex, skyTexView);
 
-  String irrPath = {0};
+  String irrPath = {};
   copyString(&irrPath, &basePath);
   appendCStr(&irrPath, ".irr.hdr");
 
@@ -313,12 +313,12 @@ void createIBLTexture(const char *baseName, int *skyWidth, int *skyHeight,
 }
 
 void loadGLTFModel(const char *path, Model *model) {
-  String pathString = {0};
+  String pathString = {};
   copyStringFromCStr(&pathString, path);
 
-  String basePath = {0};
+  String basePath = {};
 
-  String filePath = {0};
+  String filePath = {};
   copyBasePath(&filePath);
 
   if (endsWithCString(&pathString, ".glb")) {
@@ -339,14 +339,13 @@ void loadGLTFModel(const char *path, Model *model) {
   ASSERT(gltfLoadResult == cgltf_result_success);
   cgltf_load_buffers(&options, gltf, filePath.buf);
 
-  model->numTextures = gltf->textures_count;
+  model->numTextures = (int)gltf->textures_count;
   if (model->numTextures > 0) {
-    model->textures =
-        MMALLOC_ARRAY(ID3D11Texture2D *, castI32U32(model->numTextures));
-    model->textureViews = MMALLOC_ARRAY(ID3D11ShaderResourceView *,
-                                        castI32U32(model->numTextures));
+    model->textures = MMALLOC_ARRAY(ID3D11Texture2D *, model->numTextures);
+    model->textureViews =
+        MMALLOC_ARRAY(ID3D11ShaderResourceView *, model->numTextures);
 
-    String imageFilePath = {0};
+    String imageFilePath = {};
     for (cgltf_size textureIndex = 0; textureIndex < gltf->images_count;
          ++textureIndex) {
       cgltf_image *gltfImage = &gltf->images[textureIndex];
@@ -356,7 +355,7 @@ void loadGLTFModel(const char *path, Model *model) {
         data = stbi_load_from_memory(
             (uint8_t *)gltfImage->buffer_view->buffer->data +
                 gltfImage->buffer_view->offset,
-            gltfImage->buffer_view->size, &w, &h, &numComponents,
+            castUsizeI32(gltfImage->buffer_view->size), &w, &h, &numComponents,
             STBI_rgb_alpha);
       } else {
         copyString(&imageFilePath, &basePath);
@@ -389,15 +388,14 @@ void loadGLTFModel(const char *path, Model *model) {
 #define GLTF_LINEAR 9729
 #define GLTF_NEAREST_MIPMAP_NEAREST 9984
 #define GLTF_LINEAR_MIPMAP_NEAREST 9985
-#define GLTF_NEAREST_MIPMAP_LINEAR 9986
+// #define GLTF_NEAREST_MIPMAP_LINEAR 9986
 #define GLTF_LINEAR_MIPMAP_LINEAR 9987
 #define GLTF_CLAMP_TO_EDGE 33071
 #define GLTF_MIRRORED_REPEAT 33648
 #define GLTF_REPEAT 10497
   model->numSamplers = (int)gltf->samplers_count;
   if (model->numSamplers > 0) {
-    model->samplers =
-        MMALLOC_ARRAY(ID3D11SamplerState *, castI32U32(model->numSamplers));
+    model->samplers = MMALLOC_ARRAY(ID3D11SamplerState *, model->numSamplers);
 
     for (cgltf_size samplerIndex = 0; samplerIndex < gltf->samplers_count;
          ++samplerIndex) {
@@ -472,13 +470,13 @@ void loadGLTFModel(const char *path, Model *model) {
 #undef GLTF_LINEAR
 #undef GLTF_NEAREST_MIPMAP_NEAREST
 #undef GLTF_LINEAR_MIPMAP_NEAREST
-#undef GLTF_NEAREST_MIPMAP_LINEAR
+// #undef GLTF_NEAREST_MIPMAP_LINEAR
 #undef GLTF_LINEAR_MIPMAP_LINEAR
 #undef GLTF_CLAMP_TO_EDGE
 #undef GLTF_MIRRORED_REPEAT
 #undef GLTF_REPEAT
 
-  model->numMaterials = gltf->materials_count;
+  model->numMaterials = castUsizeI32(gltf->materials_count);
   if (model->numMaterials > 0) {
     model->materials = MMALLOC_ARRAY(Material, model->numMaterials);
     for (cgltf_size materialIndex = 0; materialIndex < gltf->materials_count;
@@ -505,25 +503,26 @@ void loadGLTFModel(const char *path, Model *model) {
              sizeof(Float4));
 
       if (pbrMR->base_color_texture.texture) {
-        material->baseColorTexture = gltfMaterial->pbr_metallic_roughness
-                                         .base_color_texture.texture->image -
-                                     gltf->images;
+        material->baseColorTexture =
+            castSsizeI32(gltfMaterial->pbr_metallic_roughness.base_color_texture
+                             .texture->image -
+                         gltf->images);
 
         if (pbrMR->base_color_texture.texture->sampler) {
           material->baseColorSampler =
-              gltfMaterial->pbr_metallic_roughness.base_color_texture.texture
-                  ->sampler -
-              gltf->samplers;
+              castSsizeI32(gltfMaterial->pbr_metallic_roughness
+                               .base_color_texture.texture->sampler -
+                           gltf->samplers);
         }
       }
 
       if (pbrMR->metallic_roughness_texture.texture) {
-        material->metallicRoughnessTexture =
-            pbrMR->metallic_roughness_texture.texture->image - gltf->images;
+        material->metallicRoughnessTexture = castSsizeI32(
+            pbrMR->metallic_roughness_texture.texture->image - gltf->images);
         if (pbrMR->metallic_roughness_texture.texture->sampler) {
           material->metallicRoughnessSampler =
-              pbrMR->metallic_roughness_texture.texture->sampler -
-              gltf->samplers;
+              castSsizeI32(pbrMR->metallic_roughness_texture.texture->sampler -
+                           gltf->samplers);
         }
       }
 
@@ -532,7 +531,7 @@ void loadGLTFModel(const char *path, Model *model) {
     }
   }
 
-  model->numMeshes = gltf->meshes_count;
+  model->numMeshes = castUsizeI32(gltf->meshes_count);
   model->meshes = MMALLOC_ARRAY(Mesh, model->numMeshes);
 
   int numVertices = 0;
@@ -541,7 +540,7 @@ void loadGLTFModel(const char *path, Model *model) {
     cgltf_mesh *gltfMesh = &gltf->meshes[meshIndex];
 
     Mesh *mesh = &model->meshes[meshIndex];
-    mesh->numSubMeshes = gltfMesh->primitives_count;
+    mesh->numSubMeshes = castUsizeI32(gltfMesh->primitives_count);
     mesh->subMeshes = MMALLOC_ARRAY(SubMesh, mesh->numSubMeshes);
 
     for (cgltf_size primIndex = 0; primIndex < gltfMesh->primitives_count;
@@ -549,19 +548,20 @@ void loadGLTFModel(const char *path, Model *model) {
       cgltf_primitive *prim = &gltfMesh->primitives[primIndex];
 
       SubMesh *subMesh = &mesh->subMeshes[primIndex];
-      subMesh->numIndices = prim->indices->count;
+      subMesh->numIndices = castUsizeI32(prim->indices->count);
 
       VertexIndex maxIndex = 0;
       for (cgltf_size i = 0; i < prim->indices->count; ++i) {
-        VertexIndex index = cgltf_accessor_read_index(prim->indices, i);
+        VertexIndex index =
+            castUsizeU32(cgltf_accessor_read_index(prim->indices, i));
         if (maxIndex < index) {
           maxIndex = index;
         }
       }
 
-      subMesh->numVertices = maxIndex + 1;
+      subMesh->numVertices = castU32I32(maxIndex + 1);
 
-      subMesh->material = prim->material - gltf->materials;
+      subMesh->material = castSsizeI32(prim->material - gltf->materials);
 
       numVertices += subMesh->numVertices;
       numIndices += subMesh->numIndices;
@@ -569,13 +569,19 @@ void loadGLTFModel(const char *path, Model *model) {
   }
 
   model->bufferSize =
-      (numVertices * sizeof(Vertex) + numIndices * sizeof(VertexIndex));
+      castUsizeI32(castI32Usize(numVertices) * sizeof(Vertex) +
+                   castI32Usize(numIndices) * sizeof(VertexIndex));
   model->bufferBase = MMALLOC_ARRAY(uint8_t, model->bufferSize);
   model->numVertices = numVertices;
   model->vertexBase = (Vertex *)model->bufferBase;
   model->numIndices = numIndices;
-  model->indexBase = (VertexIndex *)((uint8_t *)model->bufferBase +
-                                     numVertices * sizeof(Vertex));
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wcast-align"
+  model->indexBase =
+      (VertexIndex *)((uint8_t *)model->bufferBase +
+                      castI32Usize(numVertices) * sizeof(Vertex));
+#pragma clang diagnostic pop
   Vertex *vertexBuffer = model->vertexBase;
   VertexIndex *indexBuffer = model->indexBase;
 
@@ -595,11 +601,12 @@ void loadGLTFModel(const char *path, Model *model) {
       vertexBuffer += subMesh->numVertices;
 
       for (cgltf_size i = 0; i < prim->indices->count; ++i) {
-        subMesh->indices[i] = cgltf_accessor_read_index(prim->indices, i);
+        subMesh->indices[i] =
+            castUsizeU32(cgltf_accessor_read_index(prim->indices, i));
       }
 
       for (int i = 0; i < subMesh->numVertices; ++i) {
-        subMesh->vertices[i].color = (Float4){1, 1, 1, 1};
+        subMesh->vertices[i].color = float4(1, 1, 1, 1);
       }
       for (cgltf_size attribIndex = 0; attribIndex < prim->attributes_count;
            ++attribIndex) {
@@ -653,26 +660,26 @@ void loadGLTFModel(const char *path, Model *model) {
         }
       }
 
-      subMesh->material = prim->material - gltf->materials;
+      subMesh->material = castSsizeI32(prim->material - gltf->materials);
     }
   }
 
   BufferDesc bufferDesc = {
-      .size = (int)(numVertices * sizeof(Vertex)),
+      .size = numVertices * castUsizeI32(sizeof(Vertex)),
       .initialData = model->vertexBase,
       .usage = D3D11_USAGE_IMMUTABLE,
       .bindFlags = D3D11_BIND_VERTEX_BUFFER,
   };
   createBuffer(&bufferDesc, &model->gpuVertexBuffer);
   bufferDesc = {
-      .size = (int)(numIndices * sizeof(VertexIndex)),
+      .size = numIndices * castUsizeI32(sizeof(VertexIndex)),
       .initialData = model->indexBase,
       .usage = D3D11_USAGE_IMMUTABLE,
       .bindFlags = D3D11_BIND_INDEX_BUFFER,
   };
   createBuffer(&bufferDesc, &model->gpuIndexBuffer);
 
-  model->numNodes = gltf->nodes_count;
+  model->numNodes = castUsizeI32(gltf->nodes_count);
   model->nodes = MMALLOC_ARRAY(SceneNode, model->numNodes);
   for (cgltf_size nodeIndex = 0; nodeIndex < gltf->nodes_count; ++nodeIndex) {
     cgltf_node *gltfNode = &gltf->nodes[nodeIndex];
@@ -684,29 +691,29 @@ void loadGLTFModel(const char *path, Model *model) {
                                (float *)node->worldTransform.matrix.cols);
 
     if (gltfNode->parent) {
-      node->parent = gltfNode->parent - gltf->nodes;
+      node->parent = castSsizeI32(gltfNode->parent - gltf->nodes);
     } else {
       node->parent = -1;
     }
 
     if (gltfNode->mesh) {
-      node->mesh = gltfNode->mesh - gltf->meshes;
+      node->mesh = castSsizeI32(gltfNode->mesh - gltf->meshes);
     } else {
       node->mesh = -1;
     }
 
     if (gltfNode->children_count > 0) {
-      node->numChildNodes = gltfNode->children_count;
+      node->numChildNodes = castUsizeI32(gltfNode->children_count);
       node->childNodes = MMALLOC_ARRAY(int, node->numChildNodes);
       for (cgltf_size childIndex = 0; childIndex < gltfNode->children_count;
            ++childIndex) {
         node->childNodes[childIndex] =
-            gltfNode->children[childIndex] - gltf->nodes;
+            castSsizeI32(gltfNode->children[childIndex] - gltf->nodes);
       }
     }
   }
 
-  model->numScenes = gltf->scenes_count;
+  model->numScenes = castUsizeI32(gltf->scenes_count);
   model->scenes = MMALLOC_ARRAY(Scene, model->numScenes);
 
   for (cgltf_size sceneIndex = 0; sceneIndex < gltf->scenes_count;
@@ -715,13 +722,13 @@ void loadGLTFModel(const char *path, Model *model) {
     Scene *scene = &model->scenes[sceneIndex];
 
     if (gltfScene->nodes_count > 0) {
-      scene->numNodes = gltfScene->nodes_count;
+      scene->numNodes = castUsizeI32(gltfScene->nodes_count);
       scene->nodes = MMALLOC_ARRAY(int, scene->numNodes);
 
       for (cgltf_size nodeIndex = 0; nodeIndex < gltfScene->nodes_count;
            ++nodeIndex) {
         cgltf_node *gltfNode = gltfScene->nodes[nodeIndex];
-        scene->nodes[nodeIndex] = gltfNode - gltf->nodes;
+        scene->nodes[nodeIndex] = castSsizeI32(gltfNode - gltf->nodes);
       }
     }
   }
@@ -766,7 +773,7 @@ void destroyModel(Model *model) {
 }
 
 static void renderMesh(const Model *model, const Mesh *mesh,
-                       ID3D11Buffer *drawUniformBuffer,
+                       UNUSED ID3D11Buffer *drawUniformBuffer,
                        ID3D11Buffer *materialUniformBuffer) {
 
   for (int subMeshIndex = 0; subMeshIndex < mesh->numSubMeshes;
@@ -811,8 +818,8 @@ static void renderMesh(const Model *model, const Mesh *mesh,
     gContext->PSSetShaderResources(2, ARRAY_SIZE(textureViews), textureViews);
     gContext->PSSetSamplers(2, ARRAY_SIZE(samplers), samplers);
     gContext->DrawIndexed(castI32U32(subMesh->numIndices),
-                          subMesh->indices - model->indexBase,
-                          subMesh->vertices - model->vertexBase);
+                          castSsizeU32(subMesh->indices - model->indexBase),
+                          castSsizeI32(subMesh->vertices - model->vertexBase));
   }
 }
 
@@ -858,8 +865,8 @@ Float3 getLook(const FreeLookCamera *cam) {
   float yawRadian = degToRad(cam->yaw);
   float pitchRadian = degToRad(cam->pitch);
   float cosPitch = cosf(pitchRadian);
-  return (Float3){-sinf(yawRadian) * cosPitch, sinf(pitchRadian),
-                  cosf(yawRadian) * cosPitch};
+  return float3(-sinf(yawRadian) * cosPitch, sinf(pitchRadian),
+                cosf(yawRadian) * cosPitch);
 }
 
 Float3 getRight(const FreeLookCamera *cam) {

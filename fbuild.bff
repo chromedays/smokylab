@@ -30,7 +30,7 @@ Compiler('Compiler-Clang') {
 
     .compiler = 'Compiler-Clang'
     .linker = '$VSLLVMPath_x64$\lld-link.exe'
-    .compilerOptions = ' -o "%2" "%1" -c -Od -Wall -Wno-old-style-cast -Wno-c++98-compat-pedantic -fdiagnostics-absolute-paths -DDEBUG'
+    .compilerOptions = ' -o "%2" "%1" -c -Od -Wall -Wno-switch-enum -Wno-old-style-cast -Wno-c++98-compat-pedantic -fdiagnostics-absolute-paths -DDEBUG'
 
     .cCompilerFlags = ' '
     .cppCompilerFlags = ' '

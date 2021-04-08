@@ -91,9 +91,8 @@ int main(UNUSED int argc, UNUSED char **argv) {
       .usage = D3D11_USAGE_IMMUTABLE,
       .bindFlags = D3D11_BIND_SHADER_RESOURCE,
   };
-  defaultTextureDesc.initialData =
-      MMALLOC_ARRAY(uint32_t, castI32U32(defaultTextureDesc.width *
-                                         defaultTextureDesc.height));
+  defaultTextureDesc.initialData = MMALLOC_ARRAY(
+      uint32_t, defaultTextureDesc.width * defaultTextureDesc.height);
   for (int i = 0; i < defaultTextureDesc.width * defaultTextureDesc.height;
        ++i) {
     ((uint32_t *)defaultTextureDesc.initialData)[i] = 0xffffffff;
@@ -177,8 +176,8 @@ int main(UNUSED int argc, UNUSED char **argv) {
   createBuffer(&materialUniformBufferDesc, &materialUniformBuffer);
 
   Model model = {};
-  loadGLTFModel("../assets/models/EnvironmentTest", &model);
-  // loadGLTFModel("../assets/models/Sponza", &model);
+  // loadGLTFModel("../assets/models/EnvironmentTest", &model);
+  loadGLTFModel("../assets/models/Sponza", &model);
 
   // clang-format off
   Float4 skyboxVertices[8] = {

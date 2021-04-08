@@ -21,6 +21,8 @@ float float2Dot(const Float2 a, const Float2 b) {
   return result;
 }
 
+Float3 float3(float x, float y, float z) { return (Float3){x, y, z}; }
+
 float float3Dot(const Float3 a, const Float3 b) {
   float result = a.x * b.x + a.y * b.y + a.z * b.z;
   return result;
@@ -65,6 +67,10 @@ Float3 sphericalToCartesian(float r, float theta, float phi) {
   };
 
   return cartesian;
+}
+
+Float4 float4(float x, float y, float z, float w) {
+  return (Float4){x, y, z, w};
 }
 
 float float4Dot(const Float4 a, const Float4 b) {

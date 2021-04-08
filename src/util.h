@@ -6,6 +6,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <stdbool.h>
 #pragma clang diagnostic pop
 
 #ifdef __cplusplus
@@ -17,10 +18,11 @@
 #endif
 
 #define MMALLOC(type) (type *)calloc(1, sizeof(type))
-#define MMALLOC_ARRAY(type, count) (type *)calloc(count, sizeof(type))
+#define MMALLOC_ARRAY(type, count)                                             \
+  (type *)calloc(castI32Usize(count), sizeof(type))
 #define MMALLOC_UNINITIALIZED(type) (type *)malloc(sizeof(type))
 #define MMALLOC_ARRAY_UNINITIALIZED(type, count)                               \
-  (type *)malloc((count) * sizeof(type))
+  (type *)malloc(castI32Usize(count) * sizeof(type))
 #define MFREE(p) free(p)
 
 #define ARRAY_SIZE(arr) ((int)(sizeof(arr) / sizeof((arr)[0])))
@@ -76,7 +78,67 @@
 
 #define UNUSED __attribute__((unused))
 
+#ifdef __cplusplus
+#define STATIC_ASSERT(exp) static_assert(exp, #exp)
+#else
+#define STATIC_ASSERT(exp) _Static_assert(exp, #exp)
+#endif
+
+C_INTERFACE_BEGIN
+
 inline uint32_t castI32U32(int32_t value) {
   ASSERT(value >= 0);
   return (uint32_t)value;
 }
+
+inline size_t castI32Usize(int32_t value) {
+  ASSERT(value >= 0);
+  return (size_t)value;
+}
+
+inline int32_t castI64I32(int64_t value) {
+  ASSERT(value <= 0x7FFFFFFFll);
+  return (int32_t)value;
+}
+
+inline uint32_t castI64U32(int64_t value) {
+  ASSERT(value >= 0 && value <= 0xFFFFFFFFll);
+  return (uint32_t)value;
+}
+
+inline int32_t castU32I32(uint32_t value) {
+  ASSERT(value <= 0x7FFFFFFFu);
+  return (int32_t)value;
+}
+
+inline int32_t castU64I32(uint64_t value) {
+  ASSERT(value <= 0x7FFFFFFFull);
+  return (int32_t)value;
+}
+
+inline uint32_t castU64U32(uint64_t value) {
+  ASSERT(value <= 0xFFFFFFFFull);
+  return (uint32_t)value;
+}
+
+inline int32_t castUsizeI32(size_t value) {
+  STATIC_ASSERT(sizeof(value) == 8);
+  return castU64I32(value);
+}
+
+inline uint32_t castUsizeU32(size_t value) {
+  STATIC_ASSERT(sizeof(value) == 8);
+  return castU64U32(value);
+}
+
+inline uint32_t castSsizeU32(ptrdiff_t value) {
+  STATIC_ASSERT(sizeof(value) == 8);
+  return castI64U32(value);
+}
+
+inline int32_t castSsizeI32(ptrdiff_t value) {
+  STATIC_ASSERT(sizeof(value) == 8);
+  return castI64I32(value);
+}
+
+C_INTERFACE_END

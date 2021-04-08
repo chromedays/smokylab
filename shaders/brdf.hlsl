@@ -93,7 +93,7 @@ float4 frag(FS_INPUT input) : SV_Target {
     for (int i = 0; i < NUM_SAMPLES; ++i) {
         float2 xi = randomPoints[i].xy;
         float aa = 2/(a*a)-2;
-        xi = float2(xi.x*2, acos(pow(xi.y, 1.0 / (aa+1)))/PI);
+        xi = float2(xi.x*2, acos(pow(abs(xi.y), 1.0 / (aa+1)))/PI);
         float3 L = sampleNormalFromLongLat(xi);
         L = normalize(L.x * A + L.y * R + L.z * B); // World L
         float3 H = normalize(L + V);
@@ -120,7 +120,7 @@ float4 frag(FS_INPUT input) : SV_Target {
     float3 color = kd * diffuse + ks * specular;
     color = (exposure.x * color) / (exposure.x * color + float3(1, 1, 1));
     color = baseColor.xyz;
-    color = pow(color, 1 / 2.2);
+    color = pow(abs(color), 1 / 2.2);
     // color = specular;
     // {
     //     float3 L = float3(1, 1, 1);

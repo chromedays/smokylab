@@ -24,6 +24,7 @@ typedef int Int4 __attribute__((ext_vector_type(4)));
 
 float float2Dot(const Float2 a, const Float2 b);
 
+Float3 float3(float x, float y, float z);
 float float3Dot(const Float3 a, const Float3 b);
 Float3 float3Cross(const Float3 a, const Float3 b);
 float float3LengthSq(const Float3 v);
@@ -31,6 +32,7 @@ float float3Length(const Float3 v);
 Float3 float3Normalize(const Float3 v);
 Float3 sphericalToCartesian(float r, float theta, float phi);
 
+Float4 float4(float x, float y, float z, float w);
 float float4Dot(const Float4 a, const Float4 b);
 
 typedef struct _Mat4 {
