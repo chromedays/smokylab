@@ -69,9 +69,6 @@ float4 frag(FS_INPUT input) : SV_Target {
     float metallic = metallicRoughness.x;
     float roughness = metallicRoughness.y;
 
-    if (metallic < 0.5) {
-        baseColor.xyz = float3(0.04, 0, 0.04);
-    }
     float3 irradiance = irrTexture.Sample(irrSampler, sampleEquirectangularMap(input.normalWorld)).xyz;
     float3 diffuse = (irradiance * baseColor.xyz);
 
@@ -122,6 +119,7 @@ float4 frag(FS_INPUT input) : SV_Target {
 
     float3 color = kd * diffuse + ks * specular;
     color = (exposure.x * color) / (exposure.x * color + float3(1, 1, 1));
+    color = baseColor.xyz;
     color = pow(color, 1 / 2.2);
     // color = specular;
     // {
