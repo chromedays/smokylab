@@ -16,6 +16,8 @@
 #pragma clang diagnostic pop
 
 int main(UNUSED int argc, UNUSED char **argv) {
+  SetProcessDPIAware();
+
   SDL_Init(SDL_INIT_VIDEO);
   SDL_Window *window =
       SDL_CreateWindow("Smokylab", SDL_WINDOWPOS_CENTERED,
