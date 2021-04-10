@@ -8,7 +8,7 @@ struct FS_INPUT {
 
 struct FS_OUTPUT {
     float4 color0 : SV_TARGET0;
-    // float4 color1 : SV_TARGET1;
+    float4 color1 : SV_TARGET1;
 };
 
 FS_INPUT vert(uint id: SV_VertexID) {
@@ -27,7 +27,7 @@ FS_OUTPUT frag(FS_INPUT input) {
     float3 color =  tex.Sample(nearestSampler, input.uv).xyz;
     color = (exposure.x * color) / (exposure.x * color + float3(1, 1, 1));
     color = pow(abs(color), 1 / 2.2);
-    output.color0 = float4(color, 1);
+    output.color0 = output.color1 = float4(color, 1);
 
     return output;
 }
