@@ -352,7 +352,7 @@ int main(UNUSED int argc, UNUSED char **argv) {
     lastCursorX = cursorX;
     lastCursorY = cursorY;
 
-    if (mouseDown && !guiWantsCaptureMouse()) {
+    if (mouseDown && gui.isHoveringScene) {
       cam.yaw += (float)cursorDeltaX * 0.6f;
       cam.pitch -= (float)cursorDeltaY * 0.6f;
       cam.pitch = CLAMP(cam.pitch, -88.f, 88.f);
@@ -439,7 +439,6 @@ int main(UNUSED int argc, UNUSED char **argv) {
     // Post processing
     {
       ID3D11RenderTargetView *renderTargets[] = {
-          gSwapChainRTV,
           guiDisplayRTV,
       };
       gContext->OMSetRenderTargets(castI32U32(ARRAY_SIZE(renderTargets)),
@@ -454,9 +453,10 @@ int main(UNUSED int argc, UNUSED char **argv) {
       gContext->PSSetShaderResources(0, 1, &nullResource);
       gContext->PSSetSamplers(0, 1, &nullSampler);
 
-      renderTargets[1] = NULL;
+      renderTargets[0] = gSwapChainRTV;
       gContext->OMSetRenderTargets(castI32U32(ARRAY_SIZE(renderTargets)),
                                    renderTargets, NULL);
+      gContext->ClearRenderTargetView(gSwapChainRTV, clearColor);
     }
 
     renderGUI();

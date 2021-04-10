@@ -29,12 +29,14 @@ void updateGUI(SDL_Window *window, GUI *gui) {
   ImGui_ImplSDL2_NewFrame(window);
   ImGui::NewFrame();
 
-  ImGui::Begin("Test");
+  int ww, wh;
+  SDL_GetWindowSize(window, &ww, &wh);
+  ImGui::SetNextWindowSize({(float)ww, (float)wh}, ImGuiCond_Once);
+  ImGui::SetNextWindowPos({0, 0});
+  ImGui::Begin("Main", NULL, ImGuiWindowFlags_NoDecoration);
   ImGui::SliderFloat("Exposure", &gui->exposure, 0.1f, 100.f);
-  ImGui::End();
-
-  ImGui::Begin("Objects");
   ImGui::Image((ImTextureID)gui->renderedView, {640, 360});
+  gui->isHoveringScene = ImGui::IsItemHovered();
   ImGui::End();
 
   ImGui::Render();
