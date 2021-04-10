@@ -15,6 +15,14 @@ float dotClamp(float3 a, float3 b) {
     return max(dot(a, b), 0.00001);
 }
 
+float3 linearToGamma(float3 color) {
+    return pow(abs(color), 1 / 2.2);
+}
+
+float3 gammaToLinear(float3 color) {
+    return pow(abs(color), 2.2);
+}
+
 #define NUM_SAMPLES 40
 
 cbuffer ViewUniforms : register(b0) {

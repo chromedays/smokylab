@@ -22,6 +22,7 @@ int main(UNUSED int argc, UNUSED char **argv) {
   SDL_Window *window =
       SDL_CreateWindow("Smokylab", SDL_WINDOWPOS_CENTERED,
                        SDL_WINDOWPOS_CENTERED, 1280, 720, SDL_WINDOW_RESIZABLE);
+  SDL_SetWindowResizable(window, SDL_FALSE);
 
   int ww, wh;
   SDL_GetWindowSize(window, &ww, &wh);
@@ -83,6 +84,44 @@ int main(UNUSED int argc, UNUSED char **argv) {
   HR_ASSERT(gDevice->CreateDepthStencilView(gSwapChainDepthStencilBuffer, NULL,
                                             &gSwapChainDSV));
 
+  ID3D11Texture2D *renderedTexture;
+  ID3D11ShaderResourceView *renderedView;
+  ID3D11RenderTargetView *renderedRTV;
+  ID3D11SamplerState *postProcessSampler;
+  TextureDesc renderedTextureDesc = {
+      .width = ww,
+      .height = wh,
+      .format = DXGI_FORMAT_R16G16B16A16_FLOAT,
+      .usage = D3D11_USAGE_DEFAULT,
+      .bindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE,
+  };
+  createTexture2D(&renderedTextureDesc, &renderedTexture, &renderedView);
+  HR_ASSERT(
+      gDevice->CreateRenderTargetView(renderedTexture, NULL, &renderedRTV));
+
+  D3D11_SAMPLER_DESC postProcessSamplerDesc = {
+      .Filter = D3D11_FILTER_MIN_MAG_MIP_POINT,
+      .AddressU = D3D11_TEXTURE_ADDRESS_WRAP,
+      .AddressV = D3D11_TEXTURE_ADDRESS_WRAP,
+      .AddressW = D3D11_TEXTURE_ADDRESS_WRAP,
+  };
+  HR_ASSERT(gDevice->CreateSamplerState(&postProcessSamplerDesc,
+                                        &postProcessSampler));
+
+  ID3D11Texture2D *guiDisplayTexture;
+  ID3D11ShaderResourceView *guiDisplayView;
+  ID3D11RenderTargetView *guiDisplayRTV;
+  TextureDesc guiDisplayTextureDesc = {
+      .width = ww,
+      .height = wh,
+      .format = DXGI_FORMAT_R8G8B8A8_UNORM,
+      .usage = D3D11_USAGE_DEFAULT,
+      .bindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE,
+  };
+  createTexture2D(&guiDisplayTextureDesc, &guiDisplayTexture, &guiDisplayView);
+  HR_ASSERT(
+      gDevice->CreateRenderTargetView(guiDisplayTexture, NULL, &guiDisplayRTV));
+
   TextureDesc defaultTextureDesc = {
       .width = 16,
       .height = 16,
@@ -129,6 +168,14 @@ int main(UNUSED int argc, UNUSED char **argv) {
   HR_ASSERT(gDevice->CreateDepthStencilState(&skyDepthStencilStateDesc,
                                              &skyDepthStencilState));
 
+  ID3D11DepthStencilState *postProcessDetphStencilState;
+  D3D11_DEPTH_STENCIL_DESC postProcessDetphStencilStateDesc = {
+      .DepthEnable = FALSE,
+      .StencilEnable = FALSE,
+  };
+  HR_ASSERT(gDevice->CreateDepthStencilState(&postProcessDetphStencilStateDesc,
+                                             &postProcessDetphStencilState));
+
   ID3D11RasterizerState *rasterizerState;
   D3D11_RASTERIZER_DESC rasterizerStateDesc = {
       .FillMode = D3D11_FILL_SOLID,
@@ -150,6 +197,9 @@ int main(UNUSED int argc, UNUSED char **argv) {
 
   ShaderProgram skyProgram = {};
   createProgram("sky", &skyProgram);
+
+  ShaderProgram exposureProgram = {};
+  createProgram("exposure", &exposureProgram);
 
   ID3D11Buffer *viewUniformBuffer;
   BufferDesc viewUniformBufferDesc = {
@@ -237,6 +287,7 @@ int main(UNUSED int argc, UNUSED char **argv) {
 
   initGUI(window, gDevice, gContext);
   GUI gui = {
+      .renderedView = guiDisplayView,
       .exposure = 1,
   };
 
@@ -359,9 +410,9 @@ int main(UNUSED int argc, UNUSED char **argv) {
     };
     gContext->RSSetViewports(1, &viewport);
 
-    gContext->OMSetRenderTargets(1, &gSwapChainRTV, gSwapChainDSV);
+    gContext->OMSetRenderTargets(1, &renderedRTV, gSwapChainDSV);
     FLOAT clearColor[4] = {0.1f, 0.1f, 0.1f, 1};
-    gContext->ClearRenderTargetView(gSwapChainRTV, clearColor);
+    gContext->ClearRenderTargetView(renderedRTV, clearColor);
     gContext->ClearDepthStencilView(gSwapChainDSV, D3D11_CLEAR_DEPTH, 0, 0);
 
     gContext->RSSetState(rasterizerState);
@@ -385,6 +436,29 @@ int main(UNUSED int argc, UNUSED char **argv) {
 
     renderModel(&model, drawUniformBuffer, materialUniformBuffer);
 
+    // Post processing
+    {
+      ID3D11RenderTargetView *renderTargets[] = {
+          gSwapChainRTV,
+          guiDisplayRTV,
+      };
+      gContext->OMSetRenderTargets(castI32U32(ARRAY_SIZE(renderTargets)),
+                                   renderTargets, NULL);
+      gContext->OMSetDepthStencilState(postProcessDetphStencilState, 0);
+      useProgram(&exposureProgram);
+      gContext->PSSetShaderResources(0, 1, &renderedView);
+      gContext->PSSetSamplers(0, 1, &postProcessSampler);
+      gContext->Draw(3, 0);
+      ID3D11ShaderResourceView *nullResource = NULL;
+      ID3D11SamplerState *nullSampler = NULL;
+      gContext->PSSetShaderResources(0, 1, &nullResource);
+      gContext->PSSetSamplers(0, 1, &nullSampler);
+
+      renderTargets[1] = NULL;
+      gContext->OMSetRenderTargets(castI32U32(ARRAY_SIZE(renderTargets)),
+                                   renderTargets, NULL);
+    }
+
     renderGUI();
 
     gSwapChain->Present(1, 0);
@@ -406,16 +480,28 @@ int main(UNUSED int argc, UNUSED char **argv) {
   COM_RELEASE(drawUniformBuffer);
   COM_RELEASE(viewUniformBuffer);
 
+  destroyProgram(&exposureProgram);
   destroyProgram(&skyProgram);
   destroyProgram(&brdfProgram);
 
   COM_RELEASE(rasterizerState);
+  COM_RELEASE(postProcessDetphStencilState);
   COM_RELEASE(skyDepthStencilState);
   COM_RELEASE(depthStencilState);
 
   COM_RELEASE(gDefaultSampler);
   COM_RELEASE(gDefaultTextureView);
   COM_RELEASE(gDefaultTexture);
+
+  COM_RELEASE(guiDisplayRTV);
+  COM_RELEASE(guiDisplayView);
+  COM_RELEASE(guiDisplayTexture);
+
+  COM_RELEASE(postProcessSampler);
+  COM_RELEASE(renderedRTV);
+  COM_RELEASE(renderedView);
+  COM_RELEASE(renderedTexture);
+
   COM_RELEASE(gSwapChainDSV);
   COM_RELEASE(gSwapChainDepthStencilBuffer);
   COM_RELEASE(gSwapChainRTV);

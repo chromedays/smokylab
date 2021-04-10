@@ -6,7 +6,7 @@
 
 void destroyString(String *str) {
   MFREE(str->buf);
-  *str = (String){0};
+  *str = (String){};
 }
 
 bool compareString(const String *a, const String *b) {
@@ -29,7 +29,7 @@ static void tryExpand(String *str, int newLen) {
     char *oldBuf = str->buf;
     int oldCap = str->cap;
     str->cap = newCap;
-    str->buf = MMALLOC_ARRAY(char, castI32U32(str->cap));
+    str->buf = MMALLOC_ARRAY(char, str->cap);
     memcpy(str->buf, oldBuf, castI32U32(oldCap));
     MFREE(oldBuf);
   }

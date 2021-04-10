@@ -243,13 +243,19 @@ void createTexture2D(const TextureDesc *desc, ID3D11Texture2D **texture,
     textureDesc.MiscFlags = D3D11_RESOURCE_MISC_GENERATE_MIPS;
 
     HR_ASSERT(gDevice->CreateTexture2D(&textureDesc, NULL, texture));
-    gContext->UpdateSubresource(*texture, 0, 0, desc->initialData, pitch, 0);
+    if (desc->initialData) {
+      gContext->UpdateSubresource(*texture, 0, 0, desc->initialData, pitch, 0);
+    }
   } else {
-    D3D11_SUBRESOURCE_DATA initialData = {
-        .pSysMem = desc->initialData,
-        .SysMemPitch = pitch,
-    };
-    HR_ASSERT(gDevice->CreateTexture2D(&textureDesc, &initialData, texture));
+    if (desc->initialData) {
+      D3D11_SUBRESOURCE_DATA initialData = {
+          .pSysMem = desc->initialData,
+          .SysMemPitch = pitch,
+      };
+      HR_ASSERT(gDevice->CreateTexture2D(&textureDesc, &initialData, texture));
+    } else {
+      HR_ASSERT(gDevice->CreateTexture2D(&textureDesc, NULL, texture));
+    }
   }
 
   if (textureView) {

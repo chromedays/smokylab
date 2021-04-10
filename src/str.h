@@ -16,6 +16,8 @@ void appendCStr(String *str, const char *toAppend);
 void appendString(String *str, const String *toAppend);
 void copyStringFromCStr(String *dst, const char *src);
 void copyString(String *dst, const String *src);
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-macros"
 #define FORMAT_STRING(dst, ...)                                                \
   do {                                                                         \
     char *buf = MMALLOC_ARRAY(char, 1000);                                     \
@@ -23,6 +25,7 @@ void copyString(String *dst, const String *src);
     copyStringFromCStr(dst, buf);                                              \
     MFREE(buf);                                                                \
   } while (0)
+#pragma clang diagnostic pop
 
 void copyBasePath(String *path);
 

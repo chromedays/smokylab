@@ -64,6 +64,7 @@ float distributionTerm(float roughness, float3 N, float3 H) {
 
 float4 frag(FS_INPUT input) : SV_Target {
     float4 baseColor = baseColorFactor * baseColorTexture.Sample(baseColorSampler, input.texcoord);
+    baseColor.xyz = gammaToLinear(baseColor.xyz);
     float2 metallicRoughness =
         metallicRoughnessFactor.xy * metallicRoughnessTexture.Sample(metallicRoughnessSampler, input.texcoord).zy;
     float metallic = metallicRoughness.x;
@@ -118,9 +119,9 @@ float4 frag(FS_INPUT input) : SV_Target {
     kd *= (1 - metallic);
 
     float3 color = kd * diffuse + ks * specular;
-    color = (exposure.x * color) / (exposure.x * color + float3(1, 1, 1));
+    // color = (exposure.x * color) / (exposure.x * color + float3(1, 1, 1));
     color = baseColor.xyz;
-    color = pow(abs(color), 1 / 2.2);
+    // color = pow(abs(color), 1 / 2.2);
     // color = specular;
     // {
     //     float3 L = float3(1, 1, 1);

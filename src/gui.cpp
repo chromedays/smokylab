@@ -33,6 +33,10 @@ void updateGUI(SDL_Window *window, GUI *gui) {
   ImGui::SliderFloat("Exposure", &gui->exposure, 0.1f, 100.f);
   ImGui::End();
 
+  ImGui::Begin("Objects");
+  ImGui::Image((ImTextureID)gui->renderedView, {640, 360});
+  ImGui::End();
+
   ImGui::Render();
 }
 
