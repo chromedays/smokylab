@@ -290,6 +290,7 @@ int main(UNUSED int argc, UNUSED char **argv) {
   GUI gui = {
       .renderedView = guiDisplayView,
       .exposure = 1,
+      .model = &model,
   };
 
   ViewUniforms viewUniforms = {

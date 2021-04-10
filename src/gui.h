@@ -6,9 +6,13 @@
 #include <d3d11_1.h>
 #pragma clang diagnostic pop
 
+FORWARD_DECL(Model);
+
 typedef struct _GUI {
   ID3D11ShaderResourceView *renderedView;
   float exposure;
+
+  Model *model;
 } GUI;
 
 C_INTERFACE_BEGIN

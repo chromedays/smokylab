@@ -1,4 +1,5 @@
 #include "gui.h"
+#include "smokylab.h"
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Weverything"
 #include <imgui/imgui.h>
@@ -19,11 +20,11 @@ void initGUI(SDL_Window *window, ID3D11Device *device,
   ImVec4 *colors = ImGui::GetStyle().Colors;
   colors[ImGuiCol_Text] = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
   colors[ImGuiCol_TextDisabled] = ImVec4(0.00f, 1.00f, 0.00f, 0.57f);
-  colors[ImGuiCol_WindowBg] = ImVec4(0.00f, 0.00f, 0.00f, 0.20f);
+  colors[ImGuiCol_WindowBg] = ImVec4(0.00f, 0.00f, 0.00f, 0.60f);
   // colors[ImGuiCol_WindowBg] = ImVec4(0.00f, 0.00f, 0.00f, 1.00f);
   colors[ImGuiCol_ChildBg] = ImVec4(1.00f, 1.00f, 1.00f, 0.00f);
   colors[ImGuiCol_PopupBg] = ImVec4(0.00f, 0.00f, 0.00f, 1.00f);
-  colors[ImGuiCol_Border] = ImVec4(0.43f, 0.43f, 0.50f, 0.20f);
+  colors[ImGuiCol_Border] = ImVec4(0.43f, 0.43f, 0.50f, 0.60f);
   // colors[ImGuiCol_Border] = ImVec4(0.43f, 0.43f, 0.50f, 0.50f);
   colors[ImGuiCol_BorderShadow] = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
   colors[ImGuiCol_FrameBg] = ImVec4(0.12f, 0.12f, 0.12f, 1.00f);
@@ -68,9 +69,37 @@ static void guiPostProcessingMenu(GUI *gui, UNUSED void *userdata) {
   ImGui::SliderFloat("Exposure", &gui->exposure, 0.1f, 10.f);
 }
 
-static void guiSceneMenu(UNUSED GUI *gui, UNUSED void *userdata) {
-  ImGui::LabelText("This", "is for test");
-  ImGui::Button("does nothing");
+static void guiSceneNodeTree(const Model *model, const SceneNode *node) {
+  if (node->numChildNodes > 0) {
+    ImGui::SetNextItemOpen(true, ImGuiCond_Once);
+    if (ImGui::TreeNode(node->name.buf)) {
+      for (int i = 0; i < node->numChildNodes; ++i) {
+        const SceneNode *childNode = &model->nodes[node->childNodes[i]];
+        guiSceneNodeTree(model, childNode);
+      }
+      ImGui::TreePop();
+    }
+  } else {
+    ImGui::Indent();
+    ImGui::TextUnformatted(node->name.buf);
+    ImGui::Unindent();
+  }
+}
+
+static void guiSceneMenu(GUI *gui, UNUSED void *userdata) {
+  ImGui::SetNextItemOpen(true, ImGuiCond_Once);
+
+  const Model *model = gui->model;
+  for (int sceneIndex = 0; sceneIndex < model->numScenes; ++sceneIndex) {
+    const Scene *scene = &model->scenes[sceneIndex];
+    if (ImGui::TreeNode(scene->name.buf)) {
+      for (int nodeIndex = 0; nodeIndex < scene->numNodes; ++nodeIndex) {
+        const SceneNode *node = &model->nodes[scene->nodes[nodeIndex]];
+        guiSceneNodeTree(model, node);
+      }
+      ImGui::TreePop();
+    }
+  }
 }
 
 typedef struct _MainMenu {
@@ -92,8 +121,8 @@ static void pushMainMenu(MainMenuContext *context, const char *title,
 static void renderMainMenues(MainMenuContext *mmctx, GUI *gui) {
   int newFocusedMenuID = gFocusedMainMenuID;
 
-  float focusButtonWidth = 50;
-  float backButtonWidth = 50;
+  const float focusButtonWidth = 50;
+  const float backButtonWidth = 50;
 
   ImGui::AlignTextToFramePadding();
   if (gFocusedMainMenuID >= 0) {
@@ -102,11 +131,14 @@ static void renderMainMenues(MainMenuContext *mmctx, GUI *gui) {
     if (ImGui::Button("Back", {backButtonWidth, 0})) {
       newFocusedMenuID = -1;
     }
+    ImGui::Separator();
     mmctx->menues[gFocusedMainMenuID].guiFunc(gui, NULL);
   } else {
     for (int i = 0; i < mmctx->numMenues; ++i) {
+      ImGui::PushID(i);
       bool headerOpen = ImGui::CollapsingHeader(
           mmctx->menues[i].title, ImGuiTreeNodeFlags_AllowItemOverlap);
+      ImGui::PopID();
       ImGui::SameLine(ImGui::GetWindowWidth() - focusButtonWidth - 4);
       ImGui::PushID(i);
       if (ImGui::Button("Focus", {focusButtonWidth, 0})) {
@@ -128,7 +160,7 @@ void updateGUI(SDL_Window *window, GUI *gui) {
 
   ImGui::NewFrame();
 
-  ImGui::ShowDemoWindow();
+  // ImGui::ShowDemoWindow();
 
   int ww, wh;
   SDL_GetWindowSize(window, &ww, &wh);

@@ -84,6 +84,8 @@
 #define STATIC_ASSERT(exp) _Static_assert(exp, #exp)
 #endif
 
+#define FORWARD_DECL(name) typedef struct _##name name
+
 C_INTERFACE_BEGIN
 
 inline uint32_t castI32U32(int32_t value) {

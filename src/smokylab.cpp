@@ -690,6 +690,7 @@ void loadGLTFModel(const char *path, Model *model) {
   for (cgltf_size nodeIndex = 0; nodeIndex < gltf->nodes_count; ++nodeIndex) {
     cgltf_node *gltfNode = &gltf->nodes[nodeIndex];
     SceneNode *node = &model->nodes[nodeIndex];
+    copyStringFromCStr(&node->name, gltfNode->name);
 
     cgltf_node_transform_local(gltfNode,
                                (float *)node->localTransform.matrix.cols);
@@ -726,6 +727,7 @@ void loadGLTFModel(const char *path, Model *model) {
        ++sceneIndex) {
     cgltf_scene *gltfScene = &gltf->scenes[sceneIndex];
     Scene *scene = &model->scenes[sceneIndex];
+    copyStringFromCStr(&scene->name, gltfScene->name);
 
     if (gltfScene->nodes_count > 0) {
       scene->numNodes = castUsizeI32(gltfScene->nodes_count);
@@ -746,12 +748,16 @@ void loadGLTFModel(const char *path, Model *model) {
 
 void destroyModel(Model *model) {
   for (int i = 0; i < model->numScenes; ++i) {
+    Scene *scene = &model->scenes[i];
     MFREE(model->scenes[i].nodes);
+    destroyString(&scene->name);
   }
   MFREE(model->scenes);
 
   for (int i = 0; i < model->numNodes; ++i) {
-    MFREE(model->nodes[i].childNodes);
+    SceneNode *node = &model->nodes[i];
+    MFREE(node->childNodes);
+    destroyString(&node->name);
   }
   MFREE(model->nodes);
 

@@ -129,6 +129,8 @@ typedef struct _Transform {
 } Transform;
 
 typedef struct _SceneNode {
+  String name;
+
   int parent;
 
   Transform localTransform;
@@ -141,6 +143,7 @@ typedef struct _SceneNode {
 } SceneNode;
 
 typedef struct _Scene {
+  String name;
   int numNodes;
   int *nodes;
 } Scene;
