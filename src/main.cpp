@@ -227,7 +227,8 @@ int main(UNUSED int argc, UNUSED char **argv) {
 
   Model model = {};
   // loadGLTFModel("../assets/models/EnvironmentTest", &model);
-  loadGLTFModel("../assets/models/CesiumMilkTruck", &model);
+  //   loadGLTFModel("../assets/models/CesiumMilkTruck", &model);
+  loadGLTFModel("../assets/models/Planes", &model);
   // loadGLTFModel("../assets/models/Sponza", &model);
 
   // clang-format off
