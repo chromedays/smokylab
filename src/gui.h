@@ -9,8 +9,6 @@
 typedef struct _GUI {
   ID3D11ShaderResourceView *renderedView;
   float exposure;
-
-  bool isHoveringScene;
 } GUI;
 
 C_INTERFACE_BEGIN

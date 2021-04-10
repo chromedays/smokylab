@@ -64,9 +64,68 @@ void destroyGUI(void) {
 
 void handleGUIEvent(SDL_Event *event) { ImGui_ImplSDL2_ProcessEvent(event); }
 
+static void guiPostProcessingMenu(GUI *gui, UNUSED void *userdata) {
+  ImGui::SliderFloat("Exposure", &gui->exposure, 0.1f, 10.f);
+}
+
+static void guiSceneMenu(UNUSED GUI *gui, UNUSED void *userdata) {
+  ImGui::LabelText("This", "is for test");
+  ImGui::Button("does nothing");
+}
+
+typedef struct _MainMenu {
+  const char *title;
+  void (*guiFunc)(GUI *, void *);
+} MainMenu;
+static int gFocusedMainMenuID = -1;
+typedef struct _MainMenuContext {
+  int numMenues;
+  MainMenu menues[40];
+} MainMenuContext;
+static void pushMainMenu(MainMenuContext *context, const char *title,
+                         void (*guiFunc)(GUI *, void *)) {
+  context->menues[context->numMenues++] = {
+      .title = title,
+      .guiFunc = guiFunc,
+  };
+}
+static void renderMainMenues(MainMenuContext *mmctx, GUI *gui) {
+  int newFocusedMenuID = gFocusedMainMenuID;
+
+  float focusButtonWidth = 50;
+  float backButtonWidth = 50;
+
+  ImGui::AlignTextToFramePadding();
+  if (gFocusedMainMenuID >= 0) {
+    ImGui::TextUnformatted(mmctx->menues[gFocusedMainMenuID].title);
+    ImGui::SameLine(ImGui::GetWindowWidth() - backButtonWidth - 4);
+    if (ImGui::Button("Back", {backButtonWidth, 0})) {
+      newFocusedMenuID = -1;
+    }
+    mmctx->menues[gFocusedMainMenuID].guiFunc(gui, NULL);
+  } else {
+    for (int i = 0; i < mmctx->numMenues; ++i) {
+      bool headerOpen = ImGui::CollapsingHeader(
+          mmctx->menues[i].title, ImGuiTreeNodeFlags_AllowItemOverlap);
+      ImGui::SameLine(ImGui::GetWindowWidth() - focusButtonWidth - 4);
+      ImGui::PushID(i);
+      if (ImGui::Button("Focus", {focusButtonWidth, 0})) {
+        newFocusedMenuID = i;
+      }
+      ImGui::PopID();
+
+      if (headerOpen) {
+        mmctx->menues[i].guiFunc(gui, NULL);
+      }
+    }
+  }
+  gFocusedMainMenuID = newFocusedMenuID;
+}
+
 void updateGUI(SDL_Window *window, GUI *gui) {
   ImGui_ImplDX11_NewFrame();
   ImGui_ImplSDL2_NewFrame(window);
+
   ImGui::NewFrame();
 
   ImGui::ShowDemoWindow();
@@ -74,22 +133,15 @@ void updateGUI(SDL_Window *window, GUI *gui) {
   int ww, wh;
   SDL_GetWindowSize(window, &ww, &wh);
   ImGui::SetNextWindowSize({300, 0});
-  // ImGui::SetNextWindowSize({0, 0});
   ImGui::SetNextWindowPos({0, 0});
   ImGui::Begin("#Main", NULL, ImGuiWindowFlags_NoDecoration);
 
-  if (ImGui::CollapsingHeader("Post Processing")) {
-    ImGui::SliderFloat("Exposure", &gui->exposure, 0.1f, 10.f);
-  }
+  MainMenuContext mmctx = {};
+  pushMainMenu(&mmctx, "Post Processing", guiPostProcessingMenu);
+  pushMainMenu(&mmctx, "Scene", guiSceneMenu);
+  renderMainMenues(&mmctx, gui);
 
   ImGui::End();
-  // ImGui::BeginChild("Scene", {}, true);
-  // ImGui::Image((ImTextureID)gui->renderedView, {640, 360});
-  // gui->isHoveringScene = ImGui::IsItemHovered();
-  // ImGui::EndChild();
-  // ImGui::BeginChild("Settings", {}, true, ImGuiWindowFlags_AlwaysAutoResize);
-  // ImGui::EndChild();
-
   ImGui::Render();
 }
 
