@@ -13,3 +13,4 @@ function buildComputeShader {
 buildComputeShader "brdf"
 buildComputeShader "sky"
 buildComputeShader "exposure"
+buildComputeShader "wireframe"

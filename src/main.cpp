@@ -192,6 +192,22 @@ int main(UNUSED int argc, UNUSED char **argv) {
   HR_ASSERT(
       gDevice->CreateRasterizerState(&rasterizerStateDesc, &rasterizerState));
 
+  ID3D11RasterizerState *wireframeRasterizerState;
+  D3D11_RASTERIZER_DESC wireframeRasterizerStateDesc = {
+      .FillMode = D3D11_FILL_WIREFRAME,
+      .CullMode = D3D11_CULL_FRONT,
+      .FrontCounterClockwise = TRUE,
+      .DepthBias = 0,
+      .DepthBiasClamp = 0.f,
+      .SlopeScaledDepthBias = 0.f,
+      .DepthClipEnable = TRUE,
+      .ScissorEnable = FALSE,
+      .MultisampleEnable = FALSE,
+      .AntialiasedLineEnable = FALSE,
+  };
+  HR_ASSERT(gDevice->CreateRasterizerState(&wireframeRasterizerStateDesc,
+                                           &wireframeRasterizerState));
+
   ShaderProgram brdfProgram = {};
   createProgram("brdf", &brdfProgram);
 
@@ -200,6 +216,9 @@ int main(UNUSED int argc, UNUSED char **argv) {
 
   ShaderProgram exposureProgram = {};
   createProgram("exposure", &exposureProgram);
+
+  ShaderProgram wireframeProgram = {};
+  createProgram("wireframe", &wireframeProgram);
 
   ID3D11Buffer *viewUniformBuffer;
   BufferDesc viewUniformBufferDesc = {
@@ -228,8 +247,8 @@ int main(UNUSED int argc, UNUSED char **argv) {
   Model model = {};
   // loadGLTFModel("../assets/models/EnvironmentTest", &model);
   //   loadGLTFModel("../assets/models/CesiumMilkTruck", &model);
-  loadGLTFModel("../assets/models/Planes", &model);
-  // loadGLTFModel("../assets/models/Sponza", &model);
+  //   loadGLTFModel("../assets/models/Planes", &model);
+  loadGLTFModel("../assets/models/Sponza", &model);
 
   // clang-format off
   Float4 skyboxVertices[8] = {
@@ -436,6 +455,13 @@ int main(UNUSED int argc, UNUSED char **argv) {
 
     renderModel(&model, drawUniformBuffer, materialUniformBuffer);
 
+    if (gui.renderWireframedBackface) {
+      gContext->RSSetState(wireframeRasterizerState);
+      useProgram(&wireframeProgram);
+      renderModel(&model, drawUniformBuffer, materialUniformBuffer);
+      gContext->RSSetState(rasterizerState);
+    }
+
     // Post processing
     {
       ID3D11RenderTargetView *renderTargets[] = {
@@ -482,11 +508,14 @@ int main(UNUSED int argc, UNUSED char **argv) {
   COM_RELEASE(drawUniformBuffer);
   COM_RELEASE(viewUniformBuffer);
 
+  destroyProgram(&wireframeProgram);
   destroyProgram(&exposureProgram);
   destroyProgram(&skyProgram);
   destroyProgram(&brdfProgram);
 
+  COM_RELEASE(wireframeRasterizerState);
   COM_RELEASE(rasterizerState);
+
   COM_RELEASE(postProcessDetphStencilState);
   COM_RELEASE(skyDepthStencilState);
   COM_RELEASE(depthStencilState);

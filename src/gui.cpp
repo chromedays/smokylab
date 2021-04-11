@@ -65,6 +65,10 @@ void destroyGUI(void) {
 
 void handleGUIEvent(SDL_Event *event) { ImGui_ImplSDL2_ProcessEvent(event); }
 
+static void guiRenderSettings(GUI *gui, UNUSED void *userData) {
+  ImGui::Checkbox("Backface Wireframe", &gui->renderWireframedBackface);
+}
+
 static void guiPostProcessingMenu(GUI *gui, UNUSED void *userdata) {
   ImGui::SliderFloat("Exposure", &gui->exposure, 0.1f, 10.f);
 }
@@ -169,6 +173,7 @@ void updateGUI(SDL_Window *window, GUI *gui) {
   ImGui::Begin("#Main", NULL, ImGuiWindowFlags_NoDecoration);
 
   MainMenuContext mmctx = {};
+  pushMainMenu(&mmctx, "Render Settings", guiRenderSettings);
   pushMainMenu(&mmctx, "Post Processing", guiPostProcessingMenu);
   pushMainMenu(&mmctx, "Scene", guiSceneMenu);
   renderMainMenues(&mmctx, gui);
