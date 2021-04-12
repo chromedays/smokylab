@@ -80,6 +80,7 @@ typedef struct _ViewUniforms {
   Int4 skySize;
   Float4 randomPoints[NUM_SAMPLES];
   Float4 exposureNearFar;
+  Float4 dirLightDirIntensity;
 } ViewUniforms;
 
 typedef struct _DrawUniforms {
@@ -150,6 +151,8 @@ typedef struct _Scene {
 } Scene;
 
 typedef struct _Model {
+  String name;
+
   int numTextures;
   ID3D11Texture2D **textures;
   ID3D11ShaderResourceView **textureViews;

@@ -359,6 +359,8 @@ void loadGLTFModel(const char *path, Model *model) {
   ASSERT(gltfLoadResult == cgltf_result_success);
   cgltf_load_buffers(&options, gltf, filePath.buf);
 
+  copyStringFromCStr(&model->name, path);
+
   model->numTextures = (int)gltf->textures_count;
   if (model->numTextures > 0) {
     model->textures = MMALLOC_ARRAY(ID3D11Texture2D *, model->numTextures);
@@ -804,6 +806,8 @@ void destroyModel(Model *model) {
     COM_RELEASE(model->textures[i]);
   }
   MFREE(model->textures);
+
+  destroyString(&model->name);
 }
 
 static void renderMesh(const Model *model, const Mesh *mesh,

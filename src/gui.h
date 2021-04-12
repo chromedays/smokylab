@@ -16,8 +16,11 @@ typedef struct _GUI {
   bool renderWireframedBackface;
   bool renderDepthBuffer;
   float depthVisualizedRangeFar;
+  float lightAngle;
+  float lightIntensity;
 
-  Model *model;
+  Model **models;
+  int numModels;
 } GUI;
 
 C_INTERFACE_BEGIN

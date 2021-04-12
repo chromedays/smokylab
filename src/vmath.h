@@ -22,6 +22,7 @@ typedef int Int2 __attribute__((ext_vector_type(2)));
 typedef int Int3 __attribute__((ext_vector_type(3)));
 typedef int Int4 __attribute__((ext_vector_type(4)));
 
+Float2 float2(float x, float y);
 float float2Dot(const Float2 a, const Float2 b);
 
 Float3 float3(float x, float y, float z);

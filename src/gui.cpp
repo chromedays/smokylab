@@ -3,6 +3,7 @@
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Weverything"
 #include <imgui/imgui.h>
+#include <imgui/imgui_internal.h>
 #include <imgui/imgui_impl_dx11.h>
 #include <imgui/imgui_impl_sdl.h>
 #pragma clang diagnostic pop
@@ -65,13 +66,83 @@ void destroyGUI(void) {
 
 void handleGUIEvent(SDL_Event *event) { ImGui_ImplSDL2_ProcessEvent(event); }
 
-static void guiRenderSettings(GUI *gui, UNUSED void *userData) {
+static bool guiKnob(const char *label, float *p_value, float v_min,
+                    float v_max) {
+  ImGuiIO &io = ImGui::GetIO();
+  ImGuiStyle &style = ImGui::GetStyle();
+
+  float radius_outer = 20.0f;
+  ImVec2 pos = ImGui::GetCursorScreenPos();
+  ImVec2 center = ImVec2(pos.x + radius_outer, pos.y + radius_outer);
+  float line_height = ImGui::GetTextLineHeight();
+  ImDrawList *draw_list = ImGui::GetWindowDrawList();
+
+  float ANGLE_MIN = 3.141592f * 0.75f;
+  float ANGLE_MAX = 3.141592f * 2.25f;
+
+  ImGui::InvisibleButton(
+      label, ImVec2(radius_outer * 2,
+                    radius_outer * 2 + line_height + style.ItemInnerSpacing.y));
+  bool value_changed = false;
+  bool is_active = ImGui::IsItemActive();
+  bool is_hovered = ImGui::IsItemActive();
+  if (is_active && io.MouseDelta.x != 0.0f) {
+    float step = (v_max - v_min) / 200.0f;
+    *p_value += io.MouseDelta.x * step;
+    if (*p_value < v_min)
+      *p_value = v_min;
+    if (*p_value > v_max)
+      *p_value = v_max;
+    value_changed = true;
+  }
+
+  float t = (*p_value - v_min) / (v_max - v_min);
+  float angle = ANGLE_MIN + (ANGLE_MAX - ANGLE_MIN) * t;
+  float angle_cos = cosf(angle), angle_sin = sinf(angle);
+  float radius_inner = radius_outer * 0.40f;
+  draw_list->AddCircleFilled(center, radius_outer,
+                             ImGui::GetColorU32(ImGuiCol_FrameBg), 16);
+  draw_list->AddLine(ImVec2(center.x + angle_cos * radius_inner,
+                            center.y + angle_sin * radius_inner),
+                     ImVec2(center.x + angle_cos * (radius_outer - 2),
+                            center.y + angle_sin * (radius_outer - 2)),
+                     ImGui::GetColorU32(ImGuiCol_SliderGrabActive), 2.0f);
+  draw_list->AddCircleFilled(
+      center, radius_inner,
+      ImGui::GetColorU32(is_active    ? ImGuiCol_FrameBgActive
+                         : is_hovered ? ImGuiCol_FrameBgHovered
+                                      : ImGuiCol_FrameBg),
+      16);
+  draw_list->AddText(
+      ImVec2(pos.x, pos.y + radius_outer * 2 + style.ItemInnerSpacing.y),
+      ImGui::GetColorU32(ImGuiCol_Text), label);
+
+  if (is_active || is_hovered) {
+    ImGui::SetNextWindowPos(
+        ImVec2(pos.x - style.WindowPadding.x, pos.y - line_height -
+                                                  style.ItemInnerSpacing.y -
+                                                  style.WindowPadding.y));
+    ImGui::BeginTooltip();
+    ImGui::Text("%.3f", *p_value);
+    ImGui::EndTooltip();
+  }
+
+  return value_changed;
+}
+
+static void guiDebugSettings(GUI *gui, UNUSED void *userData) {
   ImGui::Checkbox("Backface Wireframe", &gui->renderWireframedBackface);
   ImGui::Checkbox("Show Depth", &gui->renderDepthBuffer);
   ImGui::SliderFloat("##Visualized Depth Far Range",
                      &gui->depthVisualizedRangeFar, 1, 500);
   ImGui::SameLine();
   ImGui::TextWrapped("Visualized Depth Far Range");
+}
+
+static void guiRenderSettings(GUI *gui, UNUSED void *userData) {
+  ImGui::SliderFloat("Light Angle", &gui->lightAngle, 0, 360, "%.3f",
+                     ImGuiSliderFlags_AlwaysClamp);
+  ImGui::SliderFloat("Light Intensity", &gui->lightIntensity, 1, 100);
 }
 
 static void guiPostProcessingMenu(GUI *gui, UNUSED void *userdata) {
@@ -96,15 +167,20 @@ static void guiSceneNodeTree(const Model *model, const SceneNode *node) {
 }
 
 static void guiSceneMenu(GUI *gui, UNUSED void *userdata) {
-  ImGui::SetNextItemOpen(true, ImGuiCond_Once);
-
-  const Model *model = gui->model;
-  for (int sceneIndex = 0; sceneIndex < model->numScenes; ++sceneIndex) {
-    const Scene *scene = &model->scenes[sceneIndex];
-    if (ImGui::TreeNode(scene->name.buf)) {
-      for (int nodeIndex = 0; nodeIndex < scene->numNodes; ++nodeIndex) {
-        const SceneNode *node = &model->nodes[scene->nodes[nodeIndex]];
-        guiSceneNodeTree(model, node);
+  for (int modelIndex = 0; modelIndex < gui->numModels; ++modelIndex) {
+    ImGui::SetNextItemOpen(true, ImGuiCond_Once);
+    const Model *model = gui->models[modelIndex];
+    if (ImGui::TreeNode(model->name.buf)) {
+      for (int sceneIndex = 0; sceneIndex < model->numScenes; ++sceneIndex) {
+        ImGui::SetNextItemOpen(true, ImGuiCond_Once);
+        const Scene *scene = &model->scenes[sceneIndex];
+        if (ImGui::TreeNode(scene->name.buf)) {
+          for (int nodeIndex = 0; nodeIndex < scene->numNodes; ++nodeIndex) {
+            const SceneNode *node = &model->nodes[scene->nodes[nodeIndex]];
+            guiSceneNodeTree(model, node);
+          }
+          ImGui::TreePop();
+        }
       }
       ImGui::TreePop();
     }
@@ -192,6 +268,7 @@ void updateGUI(SDL_Window *window, GUI *gui) {
     ImGui::PopStyleColor();
 
     MainMenuContext mmctx = {};
+    pushMainMenu(&mmctx, "Debug Settings", guiDebugSettings);
     pushMainMenu(&mmctx, "Render Settings", guiRenderSettings);
     pushMainMenu(&mmctx, "Post Processing", guiPostProcessingMenu);
     pushMainMenu(&mmctx, "Scene", guiSceneMenu);

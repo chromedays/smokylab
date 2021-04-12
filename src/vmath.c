@@ -16,6 +16,8 @@ float radToDeg(float rad) {
   return deg;
 }
 
+Float2 float2(float x, float y) { return (Float2){x, y}; }
+
 float float2Dot(const Float2 a, const Float2 b) {
   float result = a.x * b.x + a.y * b.y;
   return result;

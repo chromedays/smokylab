@@ -209,7 +209,7 @@ int main(UNUSED int argc, UNUSED char **argv) {
                                            &wireframeRasterizerState));
 
   ShaderProgram brdfProgram = {};
-  createProgram("brdf", &brdfProgram);
+  createProgram("new_brdf", &brdfProgram);
 
   ShaderProgram skyProgram = {};
   createProgram("sky", &skyProgram);
@@ -312,12 +312,17 @@ int main(UNUSED int argc, UNUSED char **argv) {
       .pitch = 1.6f,
   };
 
+  Model *models[] = {&model, &model2};
+
   initGUI(window, gDevice, gContext);
   GUI gui = {
       .renderedView = guiDisplayView,
       .exposure = 1,
       .depthVisualizedRangeFar = 15,
-      .model = &model,
+      .lightAngle = 30,
+      .lightIntensity = 10,
+      .models = models,
+      .numModels = ARRAY_SIZE(models),
   };
 
   float nearZ = 0.1f;
@@ -362,8 +367,11 @@ int main(UNUSED int argc, UNUSED char **argv) {
     }
 
     updateGUI(window, &gui);
-    viewUniforms.exposureNearFar.xz = {gui.exposure,
-                                       gui.depthVisualizedRangeFar};
+    viewUniforms.exposureNearFar.xz =
+        float2(gui.exposure, gui.depthVisualizedRangeFar);
+    viewUniforms.dirLightDirIntensity.xyz = float3Normalize(float3(
+        cosf(degToRad(gui.lightAngle)), -1, sinf(degToRad(gui.lightAngle))));
+    viewUniforms.dirLightDirIntensity.w = gui.lightIntensity;
 
     float dt = ct_time();
 
@@ -464,8 +472,9 @@ int main(UNUSED int argc, UNUSED char **argv) {
     gContext->OMSetDepthStencilState(depthStencilState, 0);
     useProgram(&brdfProgram);
 
-    renderModel(&model, drawUniformBuffer, materialUniformBuffer);
-    renderModel(&model2, drawUniformBuffer, materialUniformBuffer);
+    for (int i = 0; i < ARRAY_SIZE(models); ++i) {
+      renderModel(models[i], drawUniformBuffer, materialUniformBuffer);
+    }
 
     if (gui.renderWireframedBackface) {
       gContext->RSSetState(wireframeRasterizerState);
