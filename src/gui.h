@@ -9,9 +9,13 @@
 FORWARD_DECL(Model);
 
 typedef struct _GUI {
+  bool openMenu;
+
   ID3D11ShaderResourceView *renderedView;
   float exposure;
   bool renderWireframedBackface;
+  bool renderDepthBuffer;
+  float depthVisualizedRangeFar;
 
   Model *model;
 } GUI;

@@ -259,7 +259,21 @@ void createTexture2D(const TextureDesc *desc, ID3D11Texture2D **texture,
   }
 
   if (textureView) {
-    HR_ASSERT(gDevice->CreateShaderResourceView(*texture, NULL, textureView));
+    if (desc->viewFormat) {
+      D3D11_SHADER_RESOURCE_VIEW_DESC viewDesc = {
+          .Format = desc->viewFormat,
+          .ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D,
+          .Texture2D =
+              {
+                  .MostDetailedMip = 0,
+                  .MipLevels = textureDesc.MipLevels,
+              },
+      };
+      HR_ASSERT(
+          gDevice->CreateShaderResourceView(*texture, &viewDesc, textureView));
+    } else {
+      HR_ASSERT(gDevice->CreateShaderResourceView(*texture, NULL, textureView));
+    }
 
     if (desc->generateMipMaps) {
       gContext->GenerateMips(*textureView);

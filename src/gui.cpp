@@ -67,6 +67,11 @@ void handleGUIEvent(SDL_Event *event) { ImGui_ImplSDL2_ProcessEvent(event); }
 
 static void guiRenderSettings(GUI *gui, UNUSED void *userData) {
   ImGui::Checkbox("Backface Wireframe", &gui->renderWireframedBackface);
+  ImGui::Checkbox("Show Depth", &gui->renderDepthBuffer);
+  ImGui::SliderFloat("##Visualized Depth Far Range",
+                     &gui->depthVisualizedRangeFar, 1, 500);
+  ImGui::SameLine();
+  ImGui::TextWrapped("Visualized Depth Far Range");
 }
 
 static void guiPostProcessingMenu(GUI *gui, UNUSED void *userdata) {
@@ -168,15 +173,36 @@ void updateGUI(SDL_Window *window, GUI *gui) {
 
   int ww, wh;
   SDL_GetWindowSize(window, &ww, &wh);
-  ImGui::SetNextWindowSize({300, 0});
+  if (gui->openMenu) {
+    ImGui::SetNextWindowSize({300, 0});
+  } else {
+    ImGui::PushStyleColor(ImGuiCol_WindowBg, {0, 0, 0, 0});
+    ImGui::PushStyleColor(ImGuiCol_Border, {0, 0, 0, 0});
+    ImGui::PushStyleColor(ImGuiCol_BorderShadow, {0, 0, 0, 0});
+    ImGui::SetNextWindowSize({0, 0});
+  }
   ImGui::SetNextWindowPos({0, 0});
   ImGui::Begin("#Main", NULL, ImGuiWindowFlags_NoDecoration);
 
-  MainMenuContext mmctx = {};
-  pushMainMenu(&mmctx, "Render Settings", guiRenderSettings);
-  pushMainMenu(&mmctx, "Post Processing", guiPostProcessingMenu);
-  pushMainMenu(&mmctx, "Scene", guiSceneMenu);
-  renderMainMenues(&mmctx, gui);
+  if (gui->openMenu) {
+    ImGui::PushStyleColor(ImGuiCol_Button, {1, 0, 0, 1});
+    if (ImGui::Button("Close")) {
+      gui->openMenu = false;
+    }
+    ImGui::PopStyleColor();
+
+    MainMenuContext mmctx = {};
+    pushMainMenu(&mmctx, "Render Settings", guiRenderSettings);
+    pushMainMenu(&mmctx, "Post Processing", guiPostProcessingMenu);
+    pushMainMenu(&mmctx, "Scene", guiSceneMenu);
+    renderMainMenues(&mmctx, gui);
+  } else {
+    if (ImGui::Button("Open Control Menu")) {
+      gui->openMenu = true;
+    }
+
+    ImGui::PopStyleColor(3);
+  }
 
   ImGui::End();
   ImGui::Render();

@@ -24,8 +24,10 @@ SamplerState nearestSampler : register(s0);
 FS_OUTPUT frag(FS_INPUT input) {
     FS_OUTPUT output;
 
+    float exposure = exposureNearFar.x;
+
     float3 color =  tex.Sample(nearestSampler, input.uv).xyz;
-    color = (exposure.x * color) / (exposure.x * color + float3(1, 1, 1));
+    color = (exposure * color) / (exposure * color + float3(1, 1, 1));
     color = pow(abs(color), 1 / 2.2);
     output.color0 = output.color1 = float4(color, 1);
 

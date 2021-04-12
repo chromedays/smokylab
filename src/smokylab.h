@@ -57,8 +57,9 @@ void createBuffer(const BufferDesc *desc, ID3D11Buffer **buffer);
 typedef struct _TextureDesc {
   int width;
   int height;
-  int bytesPerPixel;
+  int bytesPerPixel; // Source bytes per pixel
   DXGI_FORMAT format;
+  DXGI_FORMAT viewFormat;
   D3D11_USAGE usage;
   UINT bindFlags;
   bool generateMipMaps;
@@ -78,7 +79,7 @@ typedef struct _ViewUniforms {
   Float4 viewPos;
   Int4 skySize;
   Float4 randomPoints[NUM_SAMPLES];
-  Float4 exposure;
+  Float4 exposureNearFar;
 } ViewUniforms;
 
 typedef struct _DrawUniforms {

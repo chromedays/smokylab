@@ -64,25 +64,25 @@ int main(UNUSED int argc, UNUSED char **argv) {
   HR_ASSERT(gDevice->CreateRenderTargetView(backBuffer, NULL, &gSwapChainRTV));
   COM_RELEASE(backBuffer);
 
-  D3D11_TEXTURE2D_DESC depthStencilBufferDesc = {
-      .Width = castI32U32(ww),
-      .Height = castI32U32(wh),
-      .MipLevels = 1,
-      .ArraySize = 1,
-      .Format = DXGI_FORMAT_D32_FLOAT,
-      .SampleDesc =
-          {
-              .Count = 1,
-              .Quality = 0,
-          },
-      .Usage = D3D11_USAGE_DEFAULT,
-      .BindFlags = D3D11_BIND_DEPTH_STENCIL,
-      .CPUAccessFlags = 0,
+  TextureDesc depthStencilTextureDesc = {
+      .width = ww,
+      .height = wh,
+      .format = DXGI_FORMAT_R32_TYPELESS,
+      .viewFormat = DXGI_FORMAT_R32_FLOAT,
+      .usage = D3D11_USAGE_DEFAULT,
+      .bindFlags = D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE,
   };
-  HR_ASSERT(gDevice->CreateTexture2D(&depthStencilBufferDesc, NULL,
-                                     &gSwapChainDepthStencilBuffer));
-  HR_ASSERT(gDevice->CreateDepthStencilView(gSwapChainDepthStencilBuffer, NULL,
-                                            &gSwapChainDSV));
+  ID3D11ShaderResourceView *depthTextureView;
+  createTexture2D(&depthStencilTextureDesc, &gSwapChainDepthStencilBuffer,
+                  &depthTextureView);
+  D3D11_DEPTH_STENCIL_VIEW_DESC depthStencilViewDesc = {
+      .Format = DXGI_FORMAT_D32_FLOAT,
+      .ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D,
+      .Flags = 0,
+      .Texture2D = {.MipSlice = 0},
+  };
+  HR_ASSERT(gDevice->CreateDepthStencilView(
+      gSwapChainDepthStencilBuffer, &depthStencilViewDesc, &gSwapChainDSV));
 
   ID3D11Texture2D *renderedTexture;
   ID3D11ShaderResourceView *renderedView;
@@ -168,13 +168,13 @@ int main(UNUSED int argc, UNUSED char **argv) {
   HR_ASSERT(gDevice->CreateDepthStencilState(&skyDepthStencilStateDesc,
                                              &skyDepthStencilState));
 
-  ID3D11DepthStencilState *postProcessDetphStencilState;
-  D3D11_DEPTH_STENCIL_DESC postProcessDetphStencilStateDesc = {
+  ID3D11DepthStencilState *noDepthStencilState;
+  D3D11_DEPTH_STENCIL_DESC noDepthStencilStateDesc = {
       .DepthEnable = FALSE,
       .StencilEnable = FALSE,
   };
-  HR_ASSERT(gDevice->CreateDepthStencilState(&postProcessDetphStencilStateDesc,
-                                             &postProcessDetphStencilState));
+  HR_ASSERT(gDevice->CreateDepthStencilState(&noDepthStencilStateDesc,
+                                             &noDepthStencilState));
 
   ID3D11RasterizerState *rasterizerState;
   D3D11_RASTERIZER_DESC rasterizerStateDesc = {
@@ -220,6 +220,9 @@ int main(UNUSED int argc, UNUSED char **argv) {
   ShaderProgram wireframeProgram = {};
   createProgram("wireframe", &wireframeProgram);
 
+  ShaderProgram fstProgram = {};
+  createProgram("fst", &fstProgram);
+
   ID3D11Buffer *viewUniformBuffer;
   BufferDesc viewUniformBufferDesc = {
       .size = sizeof(ViewUniforms),
@@ -249,6 +252,9 @@ int main(UNUSED int argc, UNUSED char **argv) {
   //   loadGLTFModel("../assets/models/CesiumMilkTruck", &model);
   //   loadGLTFModel("../assets/models/Planes", &model);
   loadGLTFModel("../assets/models/Sponza", &model);
+
+  Model model2 = {};
+  loadGLTFModel("../assets/models/Planes", &model2);
 
   // clang-format off
   Float4 skyboxVertices[8] = {
@@ -310,12 +316,16 @@ int main(UNUSED int argc, UNUSED char **argv) {
   GUI gui = {
       .renderedView = guiDisplayView,
       .exposure = 1,
+      .depthVisualizedRangeFar = 15,
       .model = &model,
   };
 
+  float nearZ = 0.1f;
+  float farZ = 500.f;
+
   ViewUniforms viewUniforms = {
       .skySize = {skyWidth, skyHeight},
-      .exposure = {1},
+      .exposureNearFar = {1, nearZ, gui.depthVisualizedRangeFar},
   };
   generateHammersleySequence(NUM_SAMPLES, viewUniforms.randomPoints);
 
@@ -352,7 +362,8 @@ int main(UNUSED int argc, UNUSED char **argv) {
     }
 
     updateGUI(window, &gui);
-    viewUniforms.exposure.x = gui.exposure;
+    viewUniforms.exposureNearFar.xz = {gui.exposure,
+                                       gui.depthVisualizedRangeFar};
 
     float dt = ct_time();
 
@@ -400,7 +411,7 @@ int main(UNUSED int argc, UNUSED char **argv) {
     viewUniforms.viewPos.xyz = cam.pos;
     viewUniforms.viewMat = getViewMatrix(&cam);
     viewUniforms.projMat =
-        mat4Perspective(60, (float)ww / (float)wh, 0.1f, 500);
+        mat4Perspective(60, (float)ww / (float)wh, nearZ, farZ);
 
     gContext->UpdateSubresource(viewUniformBuffer, 0, NULL, &viewUniforms, 0,
                                 0);
@@ -454,23 +465,33 @@ int main(UNUSED int argc, UNUSED char **argv) {
     useProgram(&brdfProgram);
 
     renderModel(&model, drawUniformBuffer, materialUniformBuffer);
+    renderModel(&model2, drawUniformBuffer, materialUniformBuffer);
 
     if (gui.renderWireframedBackface) {
       gContext->RSSetState(wireframeRasterizerState);
       useProgram(&wireframeProgram);
       renderModel(&model, drawUniformBuffer, materialUniformBuffer);
+      renderModel(&model2, drawUniformBuffer, materialUniformBuffer);
       gContext->RSSetState(rasterizerState);
     }
 
     // Post processing
-    {
+    if (gui.renderDepthBuffer) {
+      gContext->OMSetRenderTargets(1, &gSwapChainRTV, NULL);
+      gContext->OMSetDepthStencilState(noDepthStencilState, 0);
+      useProgram(&fstProgram);
+      gContext->PSSetShaderResources(0, 1, &depthTextureView);
+      gContext->Draw(3, 0);
+      ID3D11ShaderResourceView *nullView = NULL;
+      gContext->PSSetShaderResources(0, 1, &nullView);
+    } else {
       ID3D11RenderTargetView *renderTargets[] = {
           gSwapChainRTV,
           guiDisplayRTV,
       };
       gContext->OMSetRenderTargets(castI32U32(ARRAY_SIZE(renderTargets)),
                                    renderTargets, NULL);
-      gContext->OMSetDepthStencilState(postProcessDetphStencilState, 0);
+      gContext->OMSetDepthStencilState(noDepthStencilState, 0);
       useProgram(&exposureProgram);
       gContext->PSSetShaderResources(0, 1, &renderedView);
       gContext->PSSetSamplers(0, 1, &postProcessSampler);
@@ -480,13 +501,14 @@ int main(UNUSED int argc, UNUSED char **argv) {
       gContext->PSSetShaderResources(0, 1, &nullResource);
       gContext->PSSetSamplers(0, 1, &nullSampler);
 
-      renderTargets[0] = gSwapChainRTV;
+      renderTargets[0] = NULL;
       renderTargets[1] = NULL;
       gContext->OMSetRenderTargets(castI32U32(ARRAY_SIZE(renderTargets)),
                                    renderTargets, NULL);
       // gContext->ClearRenderTargetView(gSwapChainRTV, clearColor);
     }
 
+    gContext->OMSetRenderTargets(1, &gSwapChainRTV, NULL);
     renderGUI();
 
     gSwapChain->Present(1, 0);
@@ -502,12 +524,14 @@ int main(UNUSED int argc, UNUSED char **argv) {
   COM_RELEASE(skyIB);
   COM_RELEASE(skyVB);
 
+  destroyModel(&model2);
   destroyModel(&model);
 
   COM_RELEASE(materialUniformBuffer);
   COM_RELEASE(drawUniformBuffer);
   COM_RELEASE(viewUniformBuffer);
 
+  destroyProgram(&fstProgram);
   destroyProgram(&wireframeProgram);
   destroyProgram(&exposureProgram);
   destroyProgram(&skyProgram);
@@ -516,7 +540,7 @@ int main(UNUSED int argc, UNUSED char **argv) {
   COM_RELEASE(wireframeRasterizerState);
   COM_RELEASE(rasterizerState);
 
-  COM_RELEASE(postProcessDetphStencilState);
+  COM_RELEASE(noDepthStencilState);
   COM_RELEASE(skyDepthStencilState);
   COM_RELEASE(depthStencilState);
 
@@ -534,6 +558,7 @@ int main(UNUSED int argc, UNUSED char **argv) {
   COM_RELEASE(renderedTexture);
 
   COM_RELEASE(gSwapChainDSV);
+  COM_RELEASE(depthTextureView);
   COM_RELEASE(gSwapChainDepthStencilBuffer);
   COM_RELEASE(gSwapChainRTV);
   COM_RELEASE(gSwapChain);

@@ -31,7 +31,7 @@ cbuffer ViewUniforms : register(b0) {
     float4 viewPos;
     int4 skySize;
     float4 randomPoints[NUM_SAMPLES];
-    float4 exposure;
+    float4 exposureNearFar;
 };
 
 cbuffer DrawUniforms : register(b1) {
