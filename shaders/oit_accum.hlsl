@@ -12,6 +12,7 @@ struct FS_INPUT {
     float4 pos : SV_POSITION;
     float2 texcoord : TEXCOORD0;
     float3 posWorld : TEXCOORD1;
+    float3 posView : TEXCOORD2;
     float3 normalWorld : NORMAL;
 };
 
@@ -28,6 +29,7 @@ FS_INPUT vert(VS_INPUT input) {
     output.texcoord = input.texcoord.xy;
     float3x3 normalMat = (float3x3)transpose(invModelMat);
     output.posWorld = posWorld.xyz;
+    output.posView = mul(posWorld, viewMat).xyz;
     output.normalWorld = mul(input.normal.xyz, normalMat);
     return output;
 }
@@ -36,13 +38,15 @@ FS_OUTPUT frag(FS_INPUT input) {
     FS_OUTPUT output;
     
     float4 baseColor = baseColorFactor * baseColorTexture.Sample(baseColorSampler, input.texcoord);
+    // baseColor.w = 0.7;
     if (baseColor.w > 0.999) {
         discard;
     } 
     baseColor.xyz = gammaToLinear(baseColor.xyz);
     float d = input.pos.z;
-    // float weight = baseColor.w * max(0.01, 3000 * pow(1 - d, 3))
-    float weight = 1;
+    float z = abs(input.posView.z);
+    float weight = baseColor.w * max(0.01, min(3000, 10 / (0.00001 + pow(z / 5, 2) + pow(z / 200, 6))));
+    // float weight = 1;
     output.accum = baseColor * weight;
     output.reveal = baseColor.w;
 

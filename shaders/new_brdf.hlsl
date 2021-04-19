@@ -29,7 +29,7 @@ FS_INPUT vert(VS_INPUT input) {
 
 float4 frag(FS_INPUT input) : SV_TARGET {    
     float4 baseColor = baseColorFactor * baseColorTexture.Sample(baseColorSampler, input.texcoord);
-
+    // baseColor.w = 0.7;
     if (baseColor.w <= 0.999) {
         discard;
     }
