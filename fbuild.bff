@@ -1,4 +1,4 @@
-.VSVersion = '14.29.29917'
+.VSVersion = '14.29.30031'
 .VSEdition = 'Preview'
 .WindowsSDKVersion = '10.0.19041.0'
 .VSBinPath_x64 = 'C:\Program Files (x86)\Microsoft Visual Studio\2019\$VSEdition$\VC\Tools\MSVC\$VSVersion$\bin\Hostx64\x64'

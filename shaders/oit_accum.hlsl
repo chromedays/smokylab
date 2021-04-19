@@ -15,6 +15,11 @@ struct FS_INPUT {
     float3 normalWorld : NORMAL;
 };
 
+struct FS_OUTPUT {
+    float4 accum : SV_TARGET0;
+    float reveal : SV_TARGET1;
+};
+
 FS_INPUT vert(VS_INPUT input) {
     FS_INPUT output;
     
@@ -27,19 +32,16 @@ FS_INPUT vert(VS_INPUT input) {
     return output;
 }
 
-float4 frag(FS_INPUT input) : SV_TARGET {    
+FS_OUTPUT frag(FS_INPUT input) {
+    FS_OUTPUT output;
+    
     float4 baseColor = baseColorFactor * baseColorTexture.Sample(baseColorSampler, input.texcoord);
-
-    if (baseColor.w < 0.01) {
-        discard;
-    }
-
     baseColor.xyz = gammaToLinear(baseColor.xyz);
+    float d = input.pos.z;
+    // float weight = baseColor.w * max(0.01, 3000 * pow(1 - d, 3))
+    float weight = 1;
+    output.accum = baseColor * weight;
+    output.reveal = baseColor.w;
 
-    float3 L = -normalize(dirLightDirIntensity.xyz);
-    float3 intensity = dirLightDirIntensity.w;
-    float3 N = normalize(input.normalWorld);
-
-    float3 color = baseColor.xyz * 0.1 + baseColor.xyz * dotClamp(L, N) * intensity;
-    return float4(color, baseColor.w);
+    return output;
 }

@@ -7,6 +7,7 @@
 #pragma clang diagnostic pop
 
 FORWARD_DECL(Model);
+FORWARD_DECL(FreeLookCamera);
 
 typedef struct _GUI {
   bool openMenu;
@@ -18,6 +19,8 @@ typedef struct _GUI {
   float depthVisualizedRangeFar;
   float lightAngle;
   float lightIntensity;
+
+  FreeLookCamera *cam;
 
   Model **models;
   int numModels;
