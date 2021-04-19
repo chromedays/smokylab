@@ -36,6 +36,9 @@ FS_OUTPUT frag(FS_INPUT input) {
     FS_OUTPUT output;
     
     float4 baseColor = baseColorFactor * baseColorTexture.Sample(baseColorSampler, input.texcoord);
+    if (baseColor.w > 0.999) {
+        discard;
+    } 
     baseColor.xyz = gammaToLinear(baseColor.xyz);
     float d = input.pos.z;
     // float weight = baseColor.w * max(0.01, 3000 * pow(1 - d, 3))

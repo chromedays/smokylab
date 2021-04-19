@@ -361,9 +361,9 @@ int main(UNUSED int argc, UNUSED char **argv) {
     model = &models[numModels++];
     *model = MMALLOC(Model);
     loadGLTFModel("../assets/models/Sponza", *model);
-    // model = &models[numModels++];
-    // *model = MMALLOC(Model);
-    // loadGLTFModel("../assets/models/FlightHelmet", *model);
+    model = &models[numModels++];
+    *model = MMALLOC(Model);
+    loadGLTFModel("../assets/models/FlightHelmet", *model);
     model = &models[numModels++];
     *model = MMALLOC(Model);
     loadGLTFModel("../assets/models/Planes", *model);
@@ -588,12 +588,12 @@ int main(UNUSED int argc, UNUSED char **argv) {
     gContext->OMSetBlendState(NULL, NULL, 0xFFFFFFFF);
     useProgram(&brdfProgram);
 
-#if 0
+#if 1
     for (int i = 0; i < numModels; ++i) {
       renderModel(models[i], drawUniformBuffer, materialUniformBuffer);
     }
 #else
-    renderModel(models[0], drawUniformBuffer, materialUniformBuffer);
+    // renderModel(models[0], drawUniformBuffer, materialUniformBuffer);
 #endif
 
     if (gui.renderWireframedBackface) {
@@ -622,12 +622,12 @@ int main(UNUSED int argc, UNUSED char **argv) {
       useProgram(&oitAccumProgram);
       gContext->OMSetBlendState(oitAccumBlendState, NULL, 0xFFFFFFFF);
 
-#if 0
+#if 1
       for (int i = 0; i < numModels; ++i) {
         renderModel(models[i], drawUniformBuffer, materialUniformBuffer);
       }
 #else
-      renderModel(models[1], drawUniformBuffer, materialUniformBuffer);
+      renderModel(models[0], drawUniformBuffer, materialUniformBuffer);
 #endif
 
       renderTargets[0] = renderedRTV;
