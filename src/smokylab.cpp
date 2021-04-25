@@ -7,6 +7,7 @@
 #include <SDL2/SDL_syswm.h>
 #include <d3d11shader.h>
 #pragma clang diagnostic pop
+#include <random>
 
 ID3D11Device *gDevice;
 ID3D11DeviceContext *gContext;
@@ -945,4 +946,71 @@ void generateHammersleySequence(int n, Float4 *values) {
     avg.xy += values[i].xy;
   }
   avg /= (float)n;
+}
+
+ID3D11Texture2D *gPositionTexture;
+ID3D11ShaderResourceView *gPositionView;
+ID3D11RenderTargetView *gPositionRTV;
+
+ID3D11Texture2D *gNormalTexture;
+ID3D11ShaderResourceView *gNormalView;
+ID3D11RenderTargetView *gNormalRTV;
+
+ID3D11Texture2D *gAlbedoTexture;
+ID3D11ShaderResourceView *gAlbedoView;
+ID3D11RenderTargetView *gAlbedoRTV;
+
+ShaderProgram gSSAOProgram;
+
+void createSSAOResources(int ww, int wh) {
+  TextureDesc textureDesc = {
+      .width = ww,
+      .height = wh,
+      .format = DXGI_FORMAT_R16G16B16A16_FLOAT,
+      .usage = D3D11_USAGE_DEFAULT,
+      .bindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE,
+  };
+
+  createTexture2D(&textureDesc, &gPositionTexture, &gPositionView);
+  HR_ASSERT(
+      gDevice->CreateRenderTargetView(gPositionTexture, NULL, &gPositionRTV));
+  createTexture2D(&textureDesc, &gNormalTexture, &gNormalView);
+  HR_ASSERT(gDevice->CreateRenderTargetView(gNormalTexture, NULL, &gNormalRTV));
+  createTexture2D(&textureDesc, &gAlbedoTexture, &gAlbedoView);
+  HR_ASSERT(gDevice->CreateRenderTargetView(gAlbedoTexture, NULL, &gAlbedoRTV));
+
+  createProgram("ssao", &gSSAOProgram);
+
+  // std::uniform_real_distribution<float> randomFloats(0, 1);
+  // std::default_random_engine generator;
+  // std::vector<Float4> ssaoKernel;
+  // for (int i = 0; i < 64; ++i) {
+  //   Float4 sample = {
+  //       randomFloats(generator) * 2.f - 1.f,
+  //       randomFloats(generator) * 2.f - 1.f,
+  //       randomFloats(generator) * 2.f - 1.f,
+  //       0,
+  //   };
+  //   sample.xyz = float3Normalize(sample.xyz);
+  //   float scale = (float)i / 64.f;
+  //   auto lerp = [](float a, float b, float f) { return a + f * (b - a); };
+  //   scale = lerp(0.1f, 1.f, scale * scale);
+  //   sample *= scale;
+  //   // sample *= randomFloats(generator);
+  //   ssaoKernel.push_back(sample);
+  // }
+}
+
+void destroySSAOResources() {
+  destroyProgram(&gSSAOProgram);
+
+  COM_RELEASE(gAlbedoRTV);
+  COM_RELEASE(gAlbedoView);
+  COM_RELEASE(gAlbedoTexture);
+  COM_RELEASE(gNormalRTV);
+  COM_RELEASE(gNormalView);
+  COM_RELEASE(gNormalTexture);
+  COM_RELEASE(gPositionRTV);
+  COM_RELEASE(gPositionView);
+  COM_RELEASE(gPositionTexture);
 }

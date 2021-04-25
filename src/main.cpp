@@ -108,20 +108,6 @@ int main(UNUSED int argc, UNUSED char **argv) {
   HR_ASSERT(gDevice->CreateSamplerState(&postProcessSamplerDesc,
                                         &postProcessSampler));
 
-  ID3D11Texture2D *guiDisplayTexture;
-  ID3D11ShaderResourceView *guiDisplayView;
-  ID3D11RenderTargetView *guiDisplayRTV;
-  TextureDesc guiDisplayTextureDesc = {
-      .width = ww,
-      .height = wh,
-      .format = DXGI_FORMAT_R8G8B8A8_UNORM,
-      .usage = D3D11_USAGE_DEFAULT,
-      .bindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE,
-  };
-  createTexture2D(&guiDisplayTextureDesc, &guiDisplayTexture, &guiDisplayView);
-  HR_ASSERT(
-      gDevice->CreateRenderTargetView(guiDisplayTexture, NULL, &guiDisplayRTV));
-
   ID3D11Texture2D *oitAccumTexture;
   ID3D11ShaderResourceView *oitAccumView;
   ID3D11RenderTargetView *oitAccumRTV;
@@ -309,6 +295,8 @@ int main(UNUSED int argc, UNUSED char **argv) {
   HR_ASSERT(gDevice->CreateBlendState(&oitCompositeBlendDesc,
                                       &oitCompositeBlendState));
 
+  createSSAOResources(ww, wh);
+
   ShaderProgram brdfProgram = {};
   createProgram("new_brdf", &brdfProgram);
 
@@ -427,11 +415,15 @@ int main(UNUSED int argc, UNUSED char **argv) {
 
   initGUI(window, gDevice, gContext);
   GUI gui = {
-      .renderedView = guiDisplayView,
       .exposure = 1,
       .depthVisualizedRangeFar = 15,
       .lightAngle = 30,
       .lightIntensity = 10,
+      .globalOpacity = 0.4f,
+      .ssaoNumSamples = 10,
+      .ssaoRadius = 0.5f,
+      .ssaoScaleFactor = 1,
+      .ssaoContrastFactor = 1,
       .cam = &cam,
       .models = models,
       .numModels = numModels,
@@ -484,6 +476,10 @@ int main(UNUSED int argc, UNUSED char **argv) {
     viewUniforms.dirLightDirIntensity.xyz = float3Normalize(float3(
         cosf(degToRad(gui.lightAngle)), -1, sinf(degToRad(gui.lightAngle))));
     viewUniforms.dirLightDirIntensity.w = gui.lightIntensity;
+    viewUniforms.overrideOpacity.x = gui.overrideOpacity ? 1 : 0;
+    viewUniforms.overrideOpacity.y = gui.globalOpacity;
+    viewUniforms.ssaoFactors = {(float)gui.ssaoNumSamples, gui.ssaoRadius,
+                                gui.ssaoScaleFactor, gui.ssaoContrastFactor};
 
     float dt = ct_time();
 
@@ -560,9 +556,23 @@ int main(UNUSED int argc, UNUSED char **argv) {
     };
     gContext->RSSetViewports(1, &viewport);
 
-    gContext->OMSetRenderTargets(1, &renderedRTV, gSwapChainDSV);
-    FLOAT clearColor[4] = {0.1f, 0.1f, 0.1f, 1};
-    gContext->ClearRenderTargetView(renderedRTV, clearColor);
+    {
+      ID3D11RenderTargetView *rts[] = {
+          renderedRTV,
+          gPositionRTV,
+          gNormalRTV,
+          gAlbedoRTV,
+      };
+      gContext->OMSetRenderTargets(ARRAY_SIZE(rts), rts, gSwapChainDSV);
+      FLOAT clearColor[4] = {};
+      gContext->ClearRenderTargetView(renderedRTV, clearColor);
+      gContext->ClearRenderTargetView(gPositionRTV, clearColor);
+      gContext->ClearRenderTargetView(gNormalRTV, clearColor);
+      gContext->ClearRenderTargetView(gAlbedoRTV, clearColor);
+    }
+    // gContext->OMSetRenderTargets(1, &renderedRTV, gSwapChainDSV);
+    // FLOAT clearColor[4] = {0.1f, 0.1f, 0.1f, 1};
+    // gContext->ClearRenderTargetView(renderedRTV, clearColor);
     gContext->ClearDepthStencilView(gSwapChainDSV, D3D11_CLEAR_DEPTH, 0, 0);
 
     gContext->RSSetState(rasterizerState);
@@ -659,27 +669,58 @@ int main(UNUSED int argc, UNUSED char **argv) {
       ID3D11ShaderResourceView *nullView = NULL;
       gContext->PSSetShaderResources(0, 1, &nullView);
     } else {
-      ID3D11RenderTargetView *renderTargets[] = {
-          gSwapChainRTV,
-          guiDisplayRTV,
-      };
-      gContext->OMSetRenderTargets(castI32U32(ARRAY_SIZE(renderTargets)),
-                                   renderTargets, NULL);
-      gContext->OMSetDepthStencilState(noDepthStencilState, 0);
-      useProgram(&exposureProgram);
-      gContext->PSSetShaderResources(0, 1, &renderedView);
-      gContext->PSSetSamplers(0, 1, &postProcessSampler);
-      gContext->Draw(3, 0);
-      ID3D11ShaderResourceView *nullResource = NULL;
-      ID3D11SamplerState *nullSampler = NULL;
-      gContext->PSSetShaderResources(0, 1, &nullResource);
-      gContext->PSSetSamplers(0, 1, &nullSampler);
+      {
+        ID3D11RenderTargetView *renderTargets[] = {
+            gSwapChainRTV,
+        };
 
-      renderTargets[0] = NULL;
-      renderTargets[1] = NULL;
-      gContext->OMSetRenderTargets(castI32U32(ARRAY_SIZE(renderTargets)),
-                                   renderTargets, NULL);
-      // gContext->ClearRenderTargetView(gSwapChainRTV, clearColor);
+        gContext->OMSetRenderTargets(castI32U32(ARRAY_SIZE(renderTargets)),
+                                     renderTargets, NULL);
+
+        gContext->OMSetDepthStencilState(noDepthStencilState, 0);
+        useProgram(&gSSAOProgram);
+        ID3D11ShaderResourceView *resources[] = {
+            gPositionView,
+            gNormalView,
+            gAlbedoView,
+        };
+        gContext->PSSetShaderResources(0, ARRAY_SIZE(resources), resources);
+        gContext->PSSetSamplers(0, 1, &postProcessSampler);
+        gContext->Draw(3, 0);
+        resources[0] = NULL;
+        resources[1] = NULL;
+        resources[2] = NULL;
+        ID3D11SamplerState *nullSampler = NULL;
+        gContext->PSSetShaderResources(0, ARRAY_SIZE(resources), resources);
+        gContext->PSSetSamplers(0, 1, &nullSampler);
+
+        renderTargets[0] = NULL;
+        gContext->OMSetRenderTargets(castI32U32(ARRAY_SIZE(renderTargets)),
+                                     renderTargets, NULL);
+      }
+
+      // Exposure tone mapping
+      //   {
+      //     ID3D11RenderTargetView *renderTargets[] = {
+      //         gSwapChainRTV,
+      //     };
+      //     gContext->OMSetRenderTargets(castI32U32(ARRAY_SIZE(renderTargets)),
+      //                                  renderTargets, NULL);
+      //     gContext->OMSetDepthStencilState(noDepthStencilState, 0);
+      //     useProgram(&exposureProgram);
+      //     gContext->PSSetShaderResources(0, 1, &renderedView);
+      //     gContext->PSSetSamplers(0, 1, &postProcessSampler);
+      //     gContext->Draw(3, 0);
+      //     ID3D11ShaderResourceView *nullResource = NULL;
+      //     ID3D11SamplerState *nullSampler = NULL;
+      //     gContext->PSSetShaderResources(0, 1, &nullResource);
+      //     gContext->PSSetSamplers(0, 1, &nullSampler);
+
+      //     renderTargets[0] = NULL;
+      //     gContext->OMSetRenderTargets(castI32U32(ARRAY_SIZE(renderTargets)),
+      //                                  renderTargets, NULL);
+      //   }
+      //   gContext->ClearRenderTargetView(gSwapChainRTV, clearColor);
     }
 
     gContext->OMSetRenderTargets(1, &gSwapChainRTV, NULL);
@@ -689,6 +730,8 @@ int main(UNUSED int argc, UNUSED char **argv) {
   }
 
   destroyGUI();
+
+  destroySSAOResources();
 
   COM_RELEASE(irrView);
   COM_RELEASE(skyView);
@@ -709,6 +752,8 @@ int main(UNUSED int argc, UNUSED char **argv) {
   COM_RELEASE(drawUniformBuffer);
   COM_RELEASE(viewUniformBuffer);
 
+  destroyProgram(&oitCompositeProgram);
+  destroyProgram(&oitAccumProgram);
   destroyProgram(&fstProgram);
   destroyProgram(&wireframeProgram);
   destroyProgram(&exposureProgram);
@@ -726,10 +771,6 @@ int main(UNUSED int argc, UNUSED char **argv) {
   COM_RELEASE(gDefaultSampler);
   COM_RELEASE(gDefaultTextureView);
   COM_RELEASE(gDefaultTexture);
-
-  COM_RELEASE(guiDisplayRTV);
-  COM_RELEASE(guiDisplayView);
-  COM_RELEASE(guiDisplayTexture);
 
   COM_RELEASE(postProcessSampler);
   COM_RELEASE(renderedRTV);

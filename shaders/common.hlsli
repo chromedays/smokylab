@@ -23,6 +23,16 @@ float3 gammaToLinear(float3 color) {
     return pow(abs(color), 2.2);
 }
 
+float randomRotation(uint x, uint y) {
+    float rotation = (float)((((30 * x) ^ y) + 10 * x * y) % 360) * PI / 180;
+    return rotation;
+}
+
+float ssaoFalloff(float d) {
+    const float c = 1;
+    return c * d / max(c, d);
+}
+
 #define NUM_SAMPLES 40
 
 cbuffer ViewUniforms : register(b0) {
@@ -33,6 +43,8 @@ cbuffer ViewUniforms : register(b0) {
     float4 randomPoints[NUM_SAMPLES];
     float4 exposureNearFar;
     float4 dirLightDirIntensity;
+    float4 overrideOpacity;
+    float4 ssaoFactors; // NumSamples, Radius, ScaleFactor, ContrastFactor
 };
 
 cbuffer DrawUniforms : register(b1) {

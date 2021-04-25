@@ -21,6 +21,5 @@ float4 frag(FS_INPUT input) : SV_Target {
     float3 texcoord = float3(input.pos.xy, 0);
     float4 accum = accumTex.Load(texcoord);
     float reveal = revealTex.Load(texcoord);
-    // return float4(accum.xyz / clamp(accum.a, 0.0001, 50000), reveal);
     return float4(accum.xyz  / clamp(accum.a, 0.0001, 50000), reveal);
 } 

@@ -25,4 +25,4 @@ float4 frag(FS_INPUT input) : SV_Target {
   float ld = ((B / (d + A)) - n) / (f - n);
   // float ld =  (n * (1 - d)) / (n + (f - n) * d);
   return float4(ld, ld, ld, 1);
-} 
+}

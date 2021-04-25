@@ -36,9 +36,11 @@ FS_INPUT vert(VS_INPUT input) {
 
 FS_OUTPUT frag(FS_INPUT input) {
     FS_OUTPUT output;
-    
+
     float4 baseColor = baseColorFactor * baseColorTexture.Sample(baseColorSampler, input.texcoord);
-    // baseColor.w = 0.7;
+    if (overrideOpacity.x > 0) {
+        baseColor.w = overrideOpacity.y;
+    }
     if (baseColor.w > 0.999) {
         discard;
     } 
@@ -46,7 +48,6 @@ FS_OUTPUT frag(FS_INPUT input) {
     float d = input.pos.z;
     float z = abs(input.posView.z);
     float weight = baseColor.w * max(0.01, min(3000, 10 / (0.00001 + pow(z / 5, 2) + pow(z / 200, 6))));
-    // float weight = 1;
     output.accum = baseColor * weight;
     output.reveal = baseColor.w;
 

@@ -81,6 +81,8 @@ typedef struct _ViewUniforms {
   Float4 randomPoints[NUM_SAMPLES];
   Float4 exposureNearFar;
   Float4 dirLightDirIntensity;
+  Float4 overrideOpacity;
+  Float4 ssaoFactors;
 } ViewUniforms;
 
 typedef struct _DrawUniforms {
@@ -204,5 +206,24 @@ bool processKeyboardEvent(const SDL_Event *event, SDL_Keycode keycode,
                           bool keyDown);
 
 void generateHammersleySequence(int n, Float4 *values);
+
+extern ID3D11Texture2D *gPositionTexture;
+extern ID3D11ShaderResourceView *gPositionView;
+extern ID3D11RenderTargetView *gPositionRTV;
+
+extern ID3D11Texture2D *gNormalTexture;
+extern ID3D11ShaderResourceView *gNormalView;
+extern ID3D11RenderTargetView *gNormalRTV;
+
+extern ID3D11Texture2D *gAlbedoTexture;
+extern ID3D11ShaderResourceView *gAlbedoView;
+extern ID3D11RenderTargetView *gAlbedoRTV;
+
+extern ID3D11Buffer *gSSAOKernelBuffer;
+
+extern ShaderProgram gSSAOProgram;
+
+void createSSAOResources(int ww, int wh);
+void destroySSAOResources();
 
 C_INTERFACE_END

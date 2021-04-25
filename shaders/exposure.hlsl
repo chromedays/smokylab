@@ -7,8 +7,7 @@ struct FS_INPUT {
 };
 
 struct FS_OUTPUT {
-    float4 color0 : SV_TARGET0;
-    float4 color1 : SV_TARGET1;
+    float4 color : SV_TARGET;
 };
 
 FS_INPUT vert(uint id: SV_VertexID) {
@@ -29,7 +28,13 @@ FS_OUTPUT frag(FS_INPUT input) {
     float3 color =  tex.Sample(nearestSampler, input.uv).xyz;
     color = (exposure * color) / (exposure * color + float3(1, 1, 1));
     color = pow(abs(color), 1 / 2.2);
-    output.color0 = output.color1 = float4(color, 1);
+    output.color = float4(color, 1);
 
+    // uint x = (uint)input.pos.x;
+    // uint y = (uint)input.pos.y;
+    // uint result = (30 * (x ^ y)) + 10 * x * y;
+    // output.color0 = frac(result / PI2).xxxx;
+    // ((30 * (uint)input.pos.x) ^ (uint)input.pos.y) + 10 * 
+    // output.color0 = float4(input.pos.xy, 0, 1);
     return output;
 }

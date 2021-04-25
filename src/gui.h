@@ -12,13 +12,18 @@ FORWARD_DECL(FreeLookCamera);
 typedef struct _GUI {
   bool openMenu;
 
-  ID3D11ShaderResourceView *renderedView;
   float exposure;
   bool renderWireframedBackface;
   bool renderDepthBuffer;
   float depthVisualizedRangeFar;
   float lightAngle;
   float lightIntensity;
+  bool overrideOpacity;
+  float globalOpacity;
+  int ssaoNumSamples;
+  float ssaoRadius;
+  float ssaoScaleFactor;
+  float ssaoContrastFactor;
 
   FreeLookCamera *cam;
 

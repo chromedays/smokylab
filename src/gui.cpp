@@ -77,12 +77,18 @@ static void guiDebugSettings(GUI *gui, UNUSED void *userData) {
               (double)gui->cam->pos.y, (double)gui->cam->pos.z);
   ImGui::Text("Cam Yaw/Pitch: (%.3f, %.3f)", (double)gui->cam->yaw,
               (double)gui->cam->pitch);
+  ImGui::Checkbox("Override Opacity", &gui->overrideOpacity);
+  ImGui::SliderFloat("Global Opacity", &gui->globalOpacity, 0.1f, 0.9f);
 }
 
 static void guiRenderSettings(GUI *gui, UNUSED void *userData) {
   ImGui::SliderFloat("Light Angle", &gui->lightAngle, 0, 360, "%.3f",
                      ImGuiSliderFlags_AlwaysClamp);
   ImGui::SliderFloat("Light Intensity", &gui->lightIntensity, 1, 100);
+  ImGui::SliderInt("SSAO Sample Count", &gui->ssaoNumSamples, 1, 20);
+  ImGui::SliderFloat("SSAO Radius", &gui->ssaoRadius, 0.01f, 10);
+  ImGui::SliderFloat("SSAO Scale Factor", &gui->ssaoScaleFactor, 1, 10);
+  ImGui::SliderFloat("SSAO Contrast Factor", &gui->ssaoContrastFactor, 1, 10);
 }
 
 static void guiPostProcessingMenu(GUI *gui, UNUSED void *userdata) {
