@@ -57,6 +57,8 @@ if __name__ == '__main__':
             f'cmake -G "Visual Studio 16 2019" -A x64 -T ClangCL -B "{msvc_clang_out_dir}" -S "{source_dir}"')
         run_command(
             f'cmake -G "Ninja Multi-Config" -B "{ninja_out_dir}" -S "{source_dir}"')
+        shutil.copy2(str(ninja_out_dir / 'compile_commands.json'),
+                     str(current_dir))
     if args.build_test:
         build_shader('brdf')
         build_shader('new_brdf')
@@ -67,6 +69,7 @@ if __name__ == '__main__':
         build_shader('oit_accum')
         build_shader('oit_composite')
         build_shader('ssao')
+        # TODO: Move this to post-build event (Visual Studio)
         shutil.copy2('dep/SDL2/SDL2.dll', 'bin')
         build(msvc_clang_out_dir)
         build(ninja_out_dir)
