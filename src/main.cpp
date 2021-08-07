@@ -17,10 +17,35 @@
 #pragma clang diagnostic pop
 
 int main(UNUSED int argc, UNUSED char **argv) {
-  ASSERT(argc > 2);
-  LOG("Asset base path: %s", argv[1]);
-  LOG("Shader base path: %s", argv[2]);
-  initAssetLoader(argv[1], argv[2]);
+  {
+    String assetConfigPath = {};
+    copyBasePath(&assetConfigPath);
+    appendPathCStr(&assetConfigPath, "asset_config.txt");
+    FILE *assetConfigFile = fopen(assetConfigPath.buf, "r");
+    destroyString(&assetConfigPath);
+    ASSERT(assetConfigFile);
+    char assetBasePath[100] = {};
+    char shaderBasePath[100] = {};
+    fgets(assetBasePath, 100, assetConfigFile);
+    for (int i = 0; i < 100; ++i) {
+      if (assetBasePath[i] == '\n') {
+        assetBasePath[i] = 0;
+        break;
+      }
+    }
+    fgets(shaderBasePath, 100, assetConfigFile);
+    for (int i = 0; i < 100; ++i) {
+      if (shaderBasePath[i] == '\n') {
+        shaderBasePath[i] = 0;
+        break;
+      }
+    }
+    LOG("Asset base path: %s", assetBasePath);
+    LOG("Shader base path: %s", shaderBasePath);
+
+    fclose(assetConfigFile);
+    initAssetLoader(assetBasePath, shaderBasePath);
+  }
 
   SetProcessDPIAware();
 

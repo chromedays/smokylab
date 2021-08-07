@@ -31,6 +31,9 @@ target_link_libraries(
   PUBLIC winmm.lib
   PUBLIC Shcore.lib)
 
+target_compile_definitions(smokylab PUBLIC _CRT_SECURE_NO_WARNINGS)
+target_compile_definitions(smokylab PUBLIC "$<$<CONFIG:DEBUG>:DEBUG>")
+
 add_custom_command(
   TARGET smokylab
   POST_BUILD
@@ -48,4 +51,10 @@ file(
   GENERATE
   OUTPUT "$<TARGET_FILE_DIR:smokylab>/post_build_config.txt"
   CONTENT "${SMOKYLAB_ROOT}/shaders
+$<TARGET_FILE_DIR:smokylab>")
+
+file(
+  GENERATE
+  OUTPUT "$<TARGET_FILE_DIR:smokylab>/asset_config.txt"
+  CONTENT "${SMOKYLAB_ROOT}/assets
 $<TARGET_FILE_DIR:smokylab>")
