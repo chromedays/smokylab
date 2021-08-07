@@ -1,6 +1,7 @@
 #include "smokylab.h"
 #include "util.h"
 #include "gui.h"
+#include "asset.h"
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Weverything"
 #define CGLTF_IMPLEMENTATION
@@ -16,8 +17,10 @@
 #pragma clang diagnostic pop
 
 int main(UNUSED int argc, UNUSED char **argv) {
-  ASSERT(argc > 1);
+  ASSERT(argc > 2);
   LOG("Asset base path: %s", argv[1]);
+  LOG("Shader base path: %s", argv[2]);
+  initAssetLoader(argv[1], argv[2]);
 
   SetProcessDPIAware();
 
@@ -301,25 +304,25 @@ int main(UNUSED int argc, UNUSED char **argv) {
   createSSAOResources(ww, wh);
 
   ShaderProgram brdfProgram = {};
-  createProgram("new_brdf", &brdfProgram);
+  loadProgram("new_brdf", &brdfProgram);
 
   ShaderProgram skyProgram = {};
-  createProgram("sky", &skyProgram);
+  loadProgram("sky", &skyProgram);
 
   ShaderProgram exposureProgram = {};
-  createProgram("exposure", &exposureProgram);
+  loadProgram("exposure", &exposureProgram);
 
   ShaderProgram wireframeProgram = {};
-  createProgram("wireframe", &wireframeProgram);
+  loadProgram("wireframe", &wireframeProgram);
 
   ShaderProgram fstProgram = {};
-  createProgram("fst", &fstProgram);
+  loadProgram("fst", &fstProgram);
 
   ShaderProgram oitAccumProgram = {};
-  createProgram("oit_accum", &oitAccumProgram);
+  loadProgram("oit_accum", &oitAccumProgram);
 
   ShaderProgram oitCompositeProgram = {};
-  createProgram("oit_composite", &oitCompositeProgram);
+  loadProgram("oit_composite", &oitCompositeProgram);
 
   ID3D11Buffer *viewUniformBuffer;
   BufferDesc viewUniformBufferDesc = {
@@ -351,13 +354,13 @@ int main(UNUSED int argc, UNUSED char **argv) {
     Model **model;
     model = &models[numModels++];
     *model = MMALLOC(Model);
-    loadGLTFModel("../assets/models/Sponza", *model);
+    loadGLTFModel("models/Sponza", *model);
     model = &models[numModels++];
     *model = MMALLOC(Model);
-    loadGLTFModel("../assets/models/FlightHelmet", *model);
+    loadGLTFModel("models/FlightHelmet", *model);
     model = &models[numModels++];
     *model = MMALLOC(Model);
-    loadGLTFModel("../assets/models/Planes", *model);
+    loadGLTFModel("models/Planes", *model);
   }
 
   // clang-format off
@@ -407,8 +410,8 @@ int main(UNUSED int argc, UNUSED char **argv) {
   int skyWidth, skyHeight;
   ID3D11Texture2D *skyTex, *irrTex;
   ID3D11ShaderResourceView *skyView, *irrView;
-  createIBLTexture("Newport_Loft", &skyWidth, &skyHeight, &skyTex, &irrTex,
-                   &skyView, &irrView);
+  loadIBLTexture("ibl/Newport_Loft", &skyWidth, &skyHeight, &skyTex, &irrTex,
+                 &skyView, &irrView);
 
   FreeLookCamera cam = {
       .pos = {-5, 1, 0},
@@ -809,5 +812,8 @@ int main(UNUSED int argc, UNUSED char **argv) {
   SDL_DestroyWindow(window);
 
   SDL_Quit();
+
+  destroyAssetLoader();
+
   return 0;
 }

@@ -32,7 +32,6 @@ typedef struct _ShaderProgram {
   ID3D11PixelShader *frag;
 } ShaderProgram;
 
-void createProgram(const char *baseName, ShaderProgram *program);
 void destroyProgram(ShaderProgram *program);
 void useProgram(const ShaderProgram *program);
 
@@ -67,10 +66,6 @@ typedef struct _TextureDesc {
 } TextureDesc;
 void createTexture2D(const TextureDesc *desc, ID3D11Texture2D **texture,
                      ID3D11ShaderResourceView **textureView);
-void createIBLTexture(const char *baseName, int *skyWidth, int *skyHeight,
-                      ID3D11Texture2D **skyTex, ID3D11Texture2D **irrTex,
-                      ID3D11ShaderResourceView **skyTexView,
-                      ID3D11ShaderResourceView **irrTexView);
 
 #define NUM_SAMPLES 40
 typedef struct _ViewUniforms {
@@ -187,7 +182,6 @@ typedef struct _Model {
   ID3D11Buffer *gpuIndexBuffer;
 } Model;
 
-void loadGLTFModel(const char *path, Model *model);
 void destroyModel(Model *model);
 void renderModel(const Model *model, ID3D11Buffer *drawUniformBuffer,
                  ID3D11Buffer *materialUniformBuffer);
