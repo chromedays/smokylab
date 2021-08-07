@@ -16,6 +16,9 @@
 #pragma clang diagnostic pop
 
 int main(UNUSED int argc, UNUSED char **argv) {
+  ASSERT(argc > 1);
+  LOG("Asset base path: %s", argv[1]);
+
   SetProcessDPIAware();
 
   SDL_Init(SDL_INIT_VIDEO);
