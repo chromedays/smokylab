@@ -328,26 +328,29 @@ int main(UNUSED int argc, UNUSED char **argv) {
 
   createSSAOResources(ww, wh);
 
-  ShaderProgram brdfProgram = {};
-  loadProgram("new_brdf", &brdfProgram);
+  ShaderProgram forwardPBRProgram = {};
+  loadProgram("forward_pbr", &forwardPBRProgram);
 
-  ShaderProgram skyProgram = {};
-  loadProgram("sky", &skyProgram);
+  // ShaderProgram brdfProgram = {};
+  // loadProgram("new_brdf", &brdfProgram);
 
-  ShaderProgram exposureProgram = {};
-  loadProgram("exposure", &exposureProgram);
+  // ShaderProgram skyProgram = {};
+  // loadProgram("sky", &skyProgram);
 
-  ShaderProgram wireframeProgram = {};
-  loadProgram("wireframe", &wireframeProgram);
+  // ShaderProgram exposureProgram = {};
+  // loadProgram("exposure", &exposureProgram);
 
-  ShaderProgram fstProgram = {};
-  loadProgram("fst", &fstProgram);
+  // ShaderProgram wireframeProgram = {};
+  // loadProgram("wireframe", &wireframeProgram);
 
-  ShaderProgram oitAccumProgram = {};
-  loadProgram("oit_accum", &oitAccumProgram);
+  // ShaderProgram fstProgram = {};
+  // loadProgram("fst", &fstProgram);
 
-  ShaderProgram oitCompositeProgram = {};
-  loadProgram("oit_composite", &oitCompositeProgram);
+  // ShaderProgram oitAccumProgram = {};
+  // loadProgram("oit_accum", &oitAccumProgram);
+
+  // ShaderProgram oitCompositeProgram = {};
+  // loadProgram("oit_composite", &oitCompositeProgram);
 
   ID3D11Buffer *viewUniformBuffer;
   BufferDesc viewUniformBufferDesc = {
@@ -588,6 +591,24 @@ int main(UNUSED int argc, UNUSED char **argv) {
     gContext->RSSetViewports(1, &viewport);
 
     {
+      gContext->OMSetRenderTargets(1, &gSwapChainRTV, gSwapChainDSV);
+      FLOAT clearColor[4] = {};
+      gContext->ClearRenderTargetView(gSwapChainRTV, clearColor);
+      gContext->ClearDepthStencilView(gSwapChainDSV, D3D11_CLEAR_DEPTH, 0, 0);
+
+      gContext->RSSetState(rasterizerState);
+      gContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+      gContext->OMSetDepthStencilState(depthStencilState, 0);
+      gContext->OMSetBlendState(NULL, NULL, 0xFFFFFFFF);
+      useProgram(&forwardPBRProgram);
+
+      for (int i = 0; i < numModels; ++i) {
+        renderModel(models[i], drawUniformBuffer, materialUniformBuffer);
+      }
+    }
+
+#if 0
+    {
       ID3D11RenderTargetView *rts[] = {
           renderedRTV,
           gPositionRTV,
@@ -601,6 +622,7 @@ int main(UNUSED int argc, UNUSED char **argv) {
       gContext->ClearRenderTargetView(gNormalRTV, clearColor);
       gContext->ClearRenderTargetView(gAlbedoRTV, clearColor);
     }
+
     // gContext->OMSetRenderTargets(1, &renderedRTV, gSwapChainDSV);
     // FLOAT clearColor[4] = {0.1f, 0.1f, 0.1f, 1};
     // gContext->ClearRenderTargetView(renderedRTV, clearColor);
@@ -629,13 +651,9 @@ int main(UNUSED int argc, UNUSED char **argv) {
     gContext->OMSetBlendState(NULL, NULL, 0xFFFFFFFF);
     useProgram(&brdfProgram);
 
-#if 1
     for (int i = 0; i < numModels; ++i) {
       renderModel(models[i], drawUniformBuffer, materialUniformBuffer);
     }
-#else
-    // renderModel(models[0], drawUniformBuffer, materialUniformBuffer);
-#endif
 
     if (gui.renderWireframedBackface) {
       gContext->RSSetState(wireframeRasterizerState);
@@ -701,58 +719,60 @@ int main(UNUSED int argc, UNUSED char **argv) {
       gContext->PSSetShaderResources(0, 1, &nullView);
     } else {
       {
+          // ID3D11RenderTargetView *renderTargets[] = {
+          //     gSwapChainRTV,
+          // };
+
+          // gContext->OMSetRenderTargets(castI32U32(ARRAY_SIZE(renderTargets)),
+          //                              renderTargets, NULL);
+
+          // gContext->OMSetDepthStencilState(noDepthStencilState, 0);
+          // useProgram(&gSSAOProgram);
+          // ID3D11ShaderResourceView *resources[] = {
+          //     gPositionView,
+          //     gNormalView,
+          //     gAlbedoView,
+          // };
+          // gContext->PSSetShaderResources(0, ARRAY_SIZE(resources),
+          // resources); gContext->PSSetSamplers(0, 1, &postProcessSampler);
+          // gContext->Draw(3, 0);
+          // resources[0] = NULL;
+          // resources[1] = NULL;
+          // resources[2] = NULL;
+          // ID3D11SamplerState *nullSampler = NULL;
+          // gContext->PSSetShaderResources(0, ARRAY_SIZE(resources),
+          // resources); gContext->PSSetSamplers(0, 1, &nullSampler);
+
+          // renderTargets[0] = NULL;
+          // gContext->OMSetRenderTargets(castI32U32(ARRAY_SIZE(renderTargets)),
+          //                              renderTargets, NULL);
+      }
+
+      // Exposure tone mapping
+      {
         ID3D11RenderTargetView *renderTargets[] = {
             gSwapChainRTV,
         };
-
         gContext->OMSetRenderTargets(castI32U32(ARRAY_SIZE(renderTargets)),
                                      renderTargets, NULL);
-
         gContext->OMSetDepthStencilState(noDepthStencilState, 0);
-        useProgram(&gSSAOProgram);
-        ID3D11ShaderResourceView *resources[] = {
-            gPositionView,
-            gNormalView,
-            gAlbedoView,
-        };
-        gContext->PSSetShaderResources(0, ARRAY_SIZE(resources), resources);
+        useProgram(&exposureProgram);
+        gContext->PSSetShaderResources(0, 1, &renderedView);
         gContext->PSSetSamplers(0, 1, &postProcessSampler);
         gContext->Draw(3, 0);
-        resources[0] = NULL;
-        resources[1] = NULL;
-        resources[2] = NULL;
+        ID3D11ShaderResourceView *nullResource = NULL;
         ID3D11SamplerState *nullSampler = NULL;
-        gContext->PSSetShaderResources(0, ARRAY_SIZE(resources), resources);
+        gContext->PSSetShaderResources(0, 1, &nullResource);
         gContext->PSSetSamplers(0, 1, &nullSampler);
 
         renderTargets[0] = NULL;
         gContext->OMSetRenderTargets(castI32U32(ARRAY_SIZE(renderTargets)),
                                      renderTargets, NULL);
       }
-
-      // Exposure tone mapping
-      //   {
-      //     ID3D11RenderTargetView *renderTargets[] = {
-      //         gSwapChainRTV,
-      //     };
-      //     gContext->OMSetRenderTargets(castI32U32(ARRAY_SIZE(renderTargets)),
-      //                                  renderTargets, NULL);
-      //     gContext->OMSetDepthStencilState(noDepthStencilState, 0);
-      //     useProgram(&exposureProgram);
-      //     gContext->PSSetShaderResources(0, 1, &renderedView);
-      //     gContext->PSSetSamplers(0, 1, &postProcessSampler);
-      //     gContext->Draw(3, 0);
-      //     ID3D11ShaderResourceView *nullResource = NULL;
-      //     ID3D11SamplerState *nullSampler = NULL;
-      //     gContext->PSSetShaderResources(0, 1, &nullResource);
-      //     gContext->PSSetSamplers(0, 1, &nullSampler);
-
-      //     renderTargets[0] = NULL;
-      //     gContext->OMSetRenderTargets(castI32U32(ARRAY_SIZE(renderTargets)),
-      //                                  renderTargets, NULL);
-      //   }
-      //   gContext->ClearRenderTargetView(gSwapChainRTV, clearColor);
+      FLOAT clearColor[4] = {};
+      gContext->ClearRenderTargetView(gSwapChainRTV, clearColor);
     }
+#endif
 
     gContext->OMSetRenderTargets(1, &gSwapChainRTV, NULL);
     renderGUI();
@@ -783,13 +803,14 @@ int main(UNUSED int argc, UNUSED char **argv) {
   COM_RELEASE(drawUniformBuffer);
   COM_RELEASE(viewUniformBuffer);
 
-  destroyProgram(&oitCompositeProgram);
-  destroyProgram(&oitAccumProgram);
-  destroyProgram(&fstProgram);
-  destroyProgram(&wireframeProgram);
-  destroyProgram(&exposureProgram);
-  destroyProgram(&skyProgram);
-  destroyProgram(&brdfProgram);
+  // destroyProgram(&oitCompositeProgram);
+  // destroyProgram(&oitAccumProgram);
+  // destroyProgram(&fstProgram);
+  // destroyProgram(&wireframeProgram);
+  // destroyProgram(&exposureProgram);
+  // destroyProgram(&skyProgram);
+  // destroyProgram(&brdfProgram);
+  destroyProgram(&forwardPBRProgram);
 
   COM_RELEASE(refBlendState);
   COM_RELEASE(wireframeRasterizerState);
