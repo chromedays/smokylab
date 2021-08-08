@@ -4,5 +4,6 @@
 /tmp
 /compile_commands.json
 /fbuild.*.fdb
+/build
 imgui.ini
 __pycache__
