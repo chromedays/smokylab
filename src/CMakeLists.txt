@@ -1,6 +1,5 @@
 cmake_minimum_required(VERSION 3.11)
 
-message(STATUS "Sdfasdf ${SMOKYLAB_DEP_DIR}")
 add_executable(
   smokylab
   gui.cpp
@@ -39,7 +38,7 @@ add_custom_command(
   POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E copy "${SMOKYLAB_DEP_DIR}/SDL2/SDL2.dll"
           $<TARGET_FILE_DIR:smokylab>)
-message(STATUS "asdfasdf ${SMOKYLAB_SCRIPT_DIR}")
+
 add_custom_command(
   TARGET smokylab
   POST_BUILD
