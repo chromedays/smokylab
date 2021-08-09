@@ -326,7 +326,7 @@ int main(UNUSED int argc, UNUSED char **argv) {
   HR_ASSERT(gDevice->CreateBlendState(&oitCompositeBlendDesc,
                                       &oitCompositeBlendState));
 
-  createSSAOResources(ww, wh);
+  // createSSAOResources(ww, wh);
 
   ShaderProgram forwardPBRProgram = {};
   loadProgram("forward_pbr", &forwardPBRProgram);
