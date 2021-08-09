@@ -9,7 +9,8 @@
       "installRoot": "${projectDir}\\out\\install\\${name}",
       "cmakeCommandArgs": "",
       "buildCommandArgs": "",
-      "ctestCommandArgs": ""
+      "ctestCommandArgs": "",
+      "intelliSenseMode": "windows-clang-x64"
     },
     {
       "name": "x64-Release",
@@ -21,7 +22,7 @@
       "buildCommandArgs": "",
       "ctestCommandArgs": "",
       "inheritEnvironments": [ "clang_cl_x64" ],
-      "variables": []
+      "intelliSenseMode": "windows-clang-x64"
     }
   ]
 }
