@@ -27,6 +27,9 @@
 
 #define ARRAY_SIZE(arr) ((int)(sizeof(arr) / sizeof((arr)[0])))
 
+#define UNUSED __attribute__((unused))
+
+#ifdef DEBUG
 #define ASSERT(exp) assert(exp)
 #define VK_ASSERT(exp)                                                         \
   do {                                                                         \
@@ -39,6 +42,23 @@
     HRESULT hr__ = (exp);                                                      \
     ASSERT(SUCCEEDED(hr__));                                                   \
   } while (0)
+#else
+#define ASSERT(exp)                                                            \
+  do {                                                                         \
+    UNUSED bool notused = (exp);                                               \
+  } while (0)
+#define VK_ASSERT(exp)                                                         \
+  do {                                                                         \
+    UNUSED VkResult vulkanCallResult = (exp);                                  \
+    ASSERT(vulkanCallResult == VK_SUCCESS);                                    \
+  } while (0)
+
+#define HR_ASSERT(exp)                                                         \
+  do {                                                                         \
+    UNUSED HRESULT hr__ = (exp);                                               \
+    ASSERT(SUCCEEDED(hr__));                                                   \
+  } while (0)
+#endif
 
 #ifdef __cplusplus
 #define COM_RELEASE(com)                                                       \
@@ -75,8 +95,6 @@
 #ifndef CLAMP
 #define CLAMP(x, lo, hi) MIN(hi, MAX(lo, x))
 #endif
-
-#define UNUSED __attribute__((unused))
 
 #ifdef __cplusplus
 #define STATIC_ASSERT(exp) static_assert(exp, #exp)
