@@ -3,6 +3,10 @@
 # Smokylab
 C/C++ Game Engine
 
+## Requirements
+- Windows 10
+- clang or Visual Studio 2019 with clang toolchains
+- CMake (> 3.14)
 ## How to build
 ```shell
 python3 scripts/build.py --clear
