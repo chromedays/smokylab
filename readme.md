@@ -1,6 +1,6 @@
 <!-- ![](/screenshots/s1.png) -->
 
-# Smokylab
+# 🚬 Smokylab
 C/C++ Game Engine
 
 ## Requirements
