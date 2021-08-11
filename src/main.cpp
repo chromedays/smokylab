@@ -17,6 +17,7 @@
 #pragma clang diagnostic pop
 
 int main(UNUSED int argc, UNUSED char **argv) {
+  // Initialize asset paths
   {
     String assetConfigPath = {};
     copyBasePath(&assetConfigPath);

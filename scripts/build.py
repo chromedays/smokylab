@@ -6,7 +6,7 @@ from pathlib import Path
 
 current_dir = Path(os.path.dirname(os.path.realpath(__file__))).absolute()
 source_dir = current_dir / '..'
-out_dir = current_dir / '../bin'
+out_dir = source_dir / 'bin'
 msvc_clang_out_dir = out_dir / 'msvc_clang'
 ninja_out_dir = out_dir / 'ninja'
 tmp_dir = source_dir / 'tmp'
@@ -45,8 +45,6 @@ if __name__ == '__main__':
             f'cmake -G "Visual Studio 16 2019" -A x64 -T ClangCL -B "{msvc_clang_out_dir}" -S "{source_dir}"')
         run_command(
             f'cmake -G "Ninja Multi-Config" -B "{ninja_out_dir}" -S "{source_dir}"')
-        # shutil.copy2(str(ninja_out_dir / 'compile_commands.json'),
-        #              str(current_dir))
 
     if args.compdb:
         tmp_dir.mkdir(parents=True, exist_ok=True)
