@@ -24,6 +24,8 @@ typedef int Int4 __attribute__((ext_vector_type(4)));
 
 Float2 float2(float x, float y);
 float float2Dot(const Float2 a, const Float2 b);
+float float2LengthSq(Float2 v);
+float float2Length(Float2 v);
 
 Float3 float3(float x, float y, float z);
 float float3Dot(const Float3 a, const Float3 b);

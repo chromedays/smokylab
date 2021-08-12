@@ -23,6 +23,16 @@ float float2Dot(const Float2 a, const Float2 b) {
   return result;
 }
 
+float float2LengthSq(Float2 v) {
+  float result = float2Dot(v, v);
+  return result;
+}
+
+float float2Length(Float2 v) {
+  float result = sqrtf(float2LengthSq(v));
+  return result;
+}
+
 Float3 float3(float x, float y, float z) { return (Float3){x, y, z}; }
 
 float float3Dot(const Float3 a, const Float3 b) {

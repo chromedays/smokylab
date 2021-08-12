@@ -1,5 +1,6 @@
 #include "gui.h"
 #include "smokylab.h"
+#include "camera.h"
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Weverything"
 #include <imgui/imgui.h>
@@ -230,6 +231,11 @@ void updateGUI(SDL_Window *window, GUI *gui) {
   }
 
   ImGui::End();
+
+  ImGui::Begin("Debug Camera");
+  ImGui::Text("test");
+  ImGui::End();
+
   ImGui::Render();
 }
 

@@ -8,6 +8,7 @@ add_executable(
   str.c
   vmath.c
   asset.cpp
+  camera.c
   "${SMOKYLAB_DEP_DIR}/imgui/imgui_demo.cpp"
   "${SMOKYLAB_DEP_DIR}/imgui/imgui_draw.cpp"
   "${SMOKYLAB_DEP_DIR}/imgui/imgui_impl_dx11.cpp"

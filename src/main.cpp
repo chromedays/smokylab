@@ -2,6 +2,7 @@
 #include "util.h"
 #include "gui.h"
 #include "asset.h"
+#include "camera.h"
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Weverything"
 #define CGLTF_IMPLEMENTATION
@@ -442,11 +443,8 @@ int main(UNUSED int argc, UNUSED char **argv) {
   loadIBLTexture("ibl/Newport_Loft", &skyWidth, &skyHeight, &skyTex, &irrTex,
                  &skyView, &irrView);
 
-  FreeLookCamera cam = {
-      .pos = {-5, 1, 0},
-      .yaw = -90,
-      .pitch = 6,
-  };
+  Camera cam;
+  initCameraLookingAtTarget(&cam, float3(-5, 1, 0), float3(-5, 1.105f, -1));
 
   initGUI(window, gDevice, gContext);
   GUI gui = {

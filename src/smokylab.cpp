@@ -293,22 +293,6 @@ void renderModel(const Model *model, ID3D11Buffer *drawUniformBuffer,
   }
 }
 
-Float3 getLook(const FreeLookCamera *cam) {
-  float yawRadian = degToRad(cam->yaw);
-  float pitchRadian = degToRad(cam->pitch);
-  float cosPitch = cosf(pitchRadian);
-  return float3(-sinf(yawRadian) * cosPitch, sinf(pitchRadian),
-                cosf(yawRadian) * cosPitch);
-}
-
-Float3 getRight(const FreeLookCamera *cam) {
-  return float3Normalize(float3Cross(getLook(cam), DEFAULT_UP));
-}
-
-Mat4 getViewMatrix(const FreeLookCamera *cam) {
-  return mat4LookAt(cam->pos, cam->pos + getLook(cam), DEFAULT_UP);
-}
-
 bool processKeyboardEvent(const SDL_Event *event, SDL_Keycode keycode,
                           bool keyDown) {
   if ((event->type == SDL_KEYDOWN || event->type == SDL_KEYUP) &&

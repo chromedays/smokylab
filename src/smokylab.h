@@ -186,16 +186,6 @@ void destroyModel(Model *model);
 void renderModel(const Model *model, ID3D11Buffer *drawUniformBuffer,
                  ID3D11Buffer *materialUniformBuffer);
 
-typedef struct _FreeLookCamera {
-  Float3 pos;
-  float yaw;
-  float pitch;
-} FreeLookCamera;
-
-Float3 getLook(const FreeLookCamera *cam);
-Float3 getRight(const FreeLookCamera *cam);
-Mat4 getViewMatrix(const FreeLookCamera *cam);
-
 bool processKeyboardEvent(const SDL_Event *event, SDL_Keycode keycode,
                           bool keyDown);
 
