@@ -12,10 +12,6 @@
 #include <stb_image.h>
 #define CUTE_TIME_IMPLEMENTATION
 #include <cute_time.h>
-#include <SDL2/SDL.h>
-#include <d3d11_1.h>
-#include <dxgidebug.h>
-#include <d3dcompiler.h>
 #pragma clang diagnostic pop
 
 int main(UNUSED int argc, UNUSED char **argv) {
@@ -24,180 +20,8 @@ int main(UNUSED int argc, UNUSED char **argv) {
   initApp("Smokylab", 1280, 720);
   initRenderer();
 
-#if 0
-  ID3D11Texture2D *renderedTexture;
-  ID3D11ShaderResourceView *renderedView;
-  ID3D11RenderTargetView *renderedRTV;
-  ID3D11SamplerState *postProcessSampler;
-  TextureDesc renderedTextureDesc = {
-      .width = ww,
-      .height = wh,
-      .format = DXGI_FORMAT_R16G16B16A16_FLOAT,
-      .usage = D3D11_USAGE_DEFAULT,
-      .bindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE,
-  };
-  createTexture2D(&renderedTextureDesc, &renderedTexture, &renderedView);
-  HR_ASSERT(
-      gDevice->CreateRenderTargetView(renderedTexture, NULL, &renderedRTV));
-
-  D3D11_SAMPLER_DESC postProcessSamplerDesc = {
-      .Filter = D3D11_FILTER_MIN_MAG_MIP_POINT,
-      .AddressU = D3D11_TEXTURE_ADDRESS_WRAP,
-      .AddressV = D3D11_TEXTURE_ADDRESS_WRAP,
-      .AddressW = D3D11_TEXTURE_ADDRESS_WRAP,
-  };
-  HR_ASSERT(gDevice->CreateSamplerState(&postProcessSamplerDesc,
-                                        &postProcessSampler));
-
-  ID3D11Texture2D *oitAccumTexture;
-  ID3D11ShaderResourceView *oitAccumView;
-  ID3D11RenderTargetView *oitAccumRTV;
-  TextureDesc oitAccumTextureDesc = {
-      .width = ww,
-      .height = wh,
-      .format = DXGI_FORMAT_R16G16B16A16_FLOAT,
-      .usage = D3D11_USAGE_DEFAULT,
-      .bindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE,
-  };
-  createTexture2D(&oitAccumTextureDesc, &oitAccumTexture, &oitAccumView);
-  HR_ASSERT(
-      gDevice->CreateRenderTargetView(oitAccumTexture, NULL, &oitAccumRTV));
-
-  ID3D11Texture2D *oitRevealTexture;
-  ID3D11ShaderResourceView *oitRevealView;
-  ID3D11RenderTargetView *oitRevealRTV;
-  TextureDesc oitRevealTextureDesc = {
-      .width = ww,
-      .height = wh,
-      .format = DXGI_FORMAT_R32_FLOAT,
-      .usage = D3D11_USAGE_DEFAULT,
-      .bindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE,
-  };
-  createTexture2D(&oitRevealTextureDesc, &oitRevealTexture, &oitRevealView);
-  HR_ASSERT(
-      gDevice->CreateRenderTargetView(oitRevealTexture, NULL, &oitRevealRTV));
-#endif
-
-#if 0
-  ID3D11DepthStencilState *skyDepthStencilState;
-  D3D11_DEPTH_STENCIL_DESC skyDepthStencilStateDesc = {
-      .DepthEnable = TRUE,
-      .DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ZERO,
-      .DepthFunc = D3D11_COMPARISON_GREATER_EQUAL,
-      .StencilEnable = FALSE,
-  };
-  HR_ASSERT(gDevice->CreateDepthStencilState(&skyDepthStencilStateDesc,
-                                             &skyDepthStencilState));
-
-  ID3D11DepthStencilState *noDepthStencilState;
-  D3D11_DEPTH_STENCIL_DESC noDepthStencilStateDesc = {
-      .DepthEnable = FALSE,
-      .StencilEnable = FALSE,
-  };
-  HR_ASSERT(gDevice->CreateDepthStencilState(&noDepthStencilStateDesc,
-                                             &noDepthStencilState));
-
-  ID3D11DepthStencilState *oitAccumDepthStencilState;
-  D3D11_DEPTH_STENCIL_DESC oitAccumDepthStencilStateDesc = {
-      .DepthEnable = TRUE,
-      .DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ZERO,
-      .DepthFunc = D3D11_COMPARISON_GREATER_EQUAL,
-      .StencilEnable = FALSE,
-  };
-  HR_ASSERT(gDevice->CreateDepthStencilState(&oitAccumDepthStencilStateDesc,
-                                             &oitAccumDepthStencilState));
-#endif
-
-#if 0
-  // Sorted blend state for reference
-  ID3D11BlendState *refBlendState;
-  D3D11_BLEND_DESC refBlendDesc = {
-      .AlphaToCoverageEnable = FALSE,
-      .IndependentBlendEnable = FALSE,
-  };
-  refBlendDesc.RenderTarget[0] = {
-      .BlendEnable = TRUE,
-      .SrcBlend = D3D11_BLEND_SRC_ALPHA,
-      .DestBlend = D3D11_BLEND_INV_SRC_ALPHA,
-      .BlendOp = D3D11_BLEND_OP_ADD,
-      .SrcBlendAlpha = D3D11_BLEND_ONE,
-      .DestBlendAlpha = D3D11_BLEND_ZERO,
-      .BlendOpAlpha = D3D11_BLEND_OP_ADD,
-      .RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL,
-  };
-  HR_ASSERT(gDevice->CreateBlendState(&refBlendDesc, &refBlendState));
-
-  ID3D11BlendState *oitAccumBlendState;
-  D3D11_BLEND_DESC oitAccumBlendDesc = {
-      .AlphaToCoverageEnable = FALSE,
-      .IndependentBlendEnable = TRUE,
-  };
-  oitAccumBlendDesc.RenderTarget[0] = {
-      .BlendEnable = TRUE,
-      .SrcBlend = D3D11_BLEND_ONE,
-      .DestBlend = D3D11_BLEND_ONE,
-      .BlendOp = D3D11_BLEND_OP_ADD,
-      .SrcBlendAlpha = D3D11_BLEND_ONE,
-      .DestBlendAlpha = D3D11_BLEND_ONE,
-      .BlendOpAlpha = D3D11_BLEND_OP_ADD,
-      .RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL,
-  };
-  oitAccumBlendDesc.RenderTarget[1] = {
-      .BlendEnable = TRUE,
-      .SrcBlend = D3D11_BLEND_ZERO,
-      .DestBlend = D3D11_BLEND_INV_SRC_COLOR,
-      .BlendOp = D3D11_BLEND_OP_ADD,
-      .SrcBlendAlpha = D3D11_BLEND_ZERO,
-      .DestBlendAlpha = D3D11_BLEND_INV_SRC_ALPHA,
-      .BlendOpAlpha = D3D11_BLEND_OP_ADD,
-      .RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL,
-  };
-  HR_ASSERT(gDevice->CreateBlendState(&oitAccumBlendDesc, &oitAccumBlendState));
-
-  ID3D11BlendState *oitCompositeBlendState;
-  D3D11_BLEND_DESC oitCompositeBlendDesc = {
-      .AlphaToCoverageEnable = FALSE,
-      .IndependentBlendEnable = FALSE,
-  };
-  oitCompositeBlendDesc.RenderTarget[0] = {
-      .BlendEnable = TRUE,
-      .SrcBlend = D3D11_BLEND_INV_SRC_ALPHA,
-      .DestBlend = D3D11_BLEND_SRC_ALPHA,
-      .BlendOp = D3D11_BLEND_OP_ADD,
-      .SrcBlendAlpha = D3D11_BLEND_INV_SRC_ALPHA,
-      .DestBlendAlpha = D3D11_BLEND_SRC_ALPHA,
-      .BlendOpAlpha = D3D11_BLEND_OP_ADD,
-      .RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL,
-  };
-  HR_ASSERT(gDevice->CreateBlendState(&oitCompositeBlendDesc,
-                                      &oitCompositeBlendState));
-#endif
-
-  // createSSAOResources(ww, wh);
-
   ShaderProgram forwardPBRProgram = {};
   loadProgram("forward_pbr", &forwardPBRProgram);
-
-  // ShaderProgram brdfProgram = {};
-  // loadProgram("new_brdf", &brdfProgram);
-
-  // ShaderProgram skyProgram = {};
-  // loadProgram("sky", &skyProgram);
-
-  // ShaderProgram exposureProgram = {};
-  // loadProgram("exposure", &exposureProgram);
-
-  // ShaderProgram wireframeProgram = {};
-  // loadProgram("wireframe", &wireframeProgram);
-
-  // ShaderProgram fstProgram = {};
-  // loadProgram("fst", &fstProgram);
-
-  // ShaderProgram oitAccumProgram = {};
-  // loadProgram("oit_accum", &oitAccumProgram);
-
-  // ShaderProgram oitCompositeProgram = {};
-  // loadProgram("oit_composite", &oitCompositeProgram);
 
   ID3D11Buffer *viewUniformBuffer;
   BufferDesc viewUniformBufferDesc = {
@@ -238,6 +62,7 @@ int main(UNUSED int argc, UNUSED char **argv) {
     loadGLTFModel("models/Planes", *model);
   }
 
+#if 0
   // clang-format off
   Float4 skyboxVertices[8] = {
       {-1, -1, -1},
@@ -266,27 +91,7 @@ int main(UNUSED int argc, UNUSED char **argv) {
       6, 7, 3, 3, 2, 6,
   };
   // clang-format on
-  ID3D11Buffer *skyVB, *skyIB;
-  BufferDesc skyVBDesc = {
-      .size = sizeof(skyboxVertices),
-      .initialData = skyboxVertices,
-      .usage = D3D11_USAGE_IMMUTABLE,
-      .bindFlags = D3D11_BIND_VERTEX_BUFFER,
-  };
-  createBuffer(&skyVBDesc, &skyVB);
-  BufferDesc skyIBDesc = {
-      .size = sizeof(skyboxIndices),
-      .initialData = skyboxIndices,
-      .usage = D3D11_USAGE_IMMUTABLE,
-      .bindFlags = D3D11_BIND_INDEX_BUFFER,
-  };
-  createBuffer(&skyIBDesc, &skyIB);
-
-  int skyWidth, skyHeight;
-  ID3D11Texture2D *skyTex, *irrTex;
-  ID3D11ShaderResourceView *skyView, *irrView;
-  loadIBLTexture("ibl/Newport_Loft", &skyWidth, &skyHeight, &skyTex, &irrTex,
-                 &skyView, &irrView);
+#endif
 
   Camera cam;
   initCameraLookingAtTarget(&cam, float3(-5, 1, 0), float3(-5, 1.105f, -1));
@@ -311,7 +116,7 @@ int main(UNUSED int argc, UNUSED char **argv) {
   float farZ = 500.f;
 
   ViewUniforms viewUniforms = {
-      .skySize = {skyWidth, skyHeight},
+      // .skySize = {skyWidth, skyHeight},
       .exposureNearFar = {1, nearZ, gui.depthVisualizedRangeFar},
   };
   generateHammersleySequence(NUM_SAMPLES, viewUniforms.randomPoints);
@@ -430,173 +235,6 @@ int main(UNUSED int argc, UNUSED char **argv) {
       }
     }
 
-#if 0
-    {
-      ID3D11RenderTargetView *rts[] = {
-          renderedRTV,
-          gPositionRTV,
-          gNormalRTV,
-          gAlbedoRTV,
-      };
-      gContext->OMSetRenderTargets(ARRAY_SIZE(rts), rts, gSwapChainDSV);
-      FLOAT clearColor[4] = {};
-      gContext->ClearRenderTargetView(renderedRTV, clearColor);
-      gContext->ClearRenderTargetView(gPositionRTV, clearColor);
-      gContext->ClearRenderTargetView(gNormalRTV, clearColor);
-      gContext->ClearRenderTargetView(gAlbedoRTV, clearColor);
-    }
-
-    // gContext->OMSetRenderTargets(1, &renderedRTV, gSwapChainDSV);
-    // FLOAT clearColor[4] = {0.1f, 0.1f, 0.1f, 1};
-    // gContext->ClearRenderTargetView(renderedRTV, clearColor);
-    gContext->ClearDepthStencilView(gSwapChainDSV, D3D11_CLEAR_DEPTH, 0, 0);
-
-    gContext->RSSetState(rasterizerState);
-    gContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-
-    ID3D11ShaderResourceView *skyResources[] = {skyView, irrView};
-    ID3D11SamplerState *skySamplers[] = {gDefaultSampler, gDefaultSampler};
-    gContext->PSSetShaderResources(0, ARRAY_SIZE(skyResources), skyResources);
-    gContext->PSSetSamplers(0, ARRAY_SIZE(skySamplers), skySamplers);
-
-#if 1
-    // Render sky
-    gContext->OMSetDepthStencilState(skyDepthStencilState, 0);
-    useProgram(&skyProgram);
-    UINT stride = sizeof(Float4), offset = 0;
-    gContext->IASetVertexBuffers(0, 1, &skyVB, &stride, &offset);
-    gContext->IASetIndexBuffer(skyIB, DXGI_FORMAT_R32_UINT, 0);
-    gContext->DrawIndexed(ARRAY_SIZE(skyboxIndices), 0, 0);
-#endif
-
-#if 1
-    gContext->OMSetDepthStencilState(depthStencilState, 0);
-    gContext->OMSetBlendState(NULL, NULL, 0xFFFFFFFF);
-    useProgram(&brdfProgram);
-
-    for (int i = 0; i < numModels; ++i) {
-      renderModel(models[i], drawUniformBuffer, materialUniformBuffer);
-    }
-
-    if (gui.renderWireframedBackface) {
-      gContext->RSSetState(wireframeRasterizerState);
-      useProgram(&wireframeProgram);
-      for (int i = 0; i < numModels; ++i) {
-        renderModel(models[i], drawUniformBuffer, materialUniformBuffer);
-      }
-      gContext->RSSetState(rasterizerState);
-    }
-#endif
-
-    {
-      gContext->OMSetDepthStencilState(oitAccumDepthStencilState, 0);
-      ID3D11RenderTargetView *renderTargets[] = {
-          oitAccumRTV,
-          oitRevealRTV,
-      };
-      gContext->OMSetRenderTargets(ARRAY_SIZE(renderTargets), renderTargets,
-                                   gSwapChainDSV);
-      FLOAT cc[4] = {};
-      gContext->ClearRenderTargetView(oitAccumRTV, cc);
-      cc[0] = 1;
-      gContext->ClearRenderTargetView(oitRevealRTV, cc);
-
-      useProgram(&oitAccumProgram);
-      gContext->OMSetBlendState(oitAccumBlendState, NULL, 0xFFFFFFFF);
-
-#if 1
-      for (int i = 0; i < numModels; ++i) {
-        renderModel(models[i], drawUniformBuffer, materialUniformBuffer);
-      }
-#else
-      renderModel(models[0], drawUniformBuffer, materialUniformBuffer);
-#endif
-
-      renderTargets[0] = renderedRTV;
-      renderTargets[1] = NULL;
-      gContext->OMSetRenderTargets(ARRAY_SIZE(renderTargets), renderTargets,
-                                   gSwapChainDSV);
-
-      gContext->OMSetDepthStencilState(noDepthStencilState, 0);
-      useProgram(&oitCompositeProgram);
-      gContext->OMSetBlendState(oitCompositeBlendState, NULL, 0xFFFFFFFF);
-
-      ID3D11ShaderResourceView *views[] = {
-          oitAccumView,
-          oitRevealView,
-      };
-      gContext->PSSetShaderResources(0, ARRAY_SIZE(views), views);
-      gContext->Draw(3, 0);
-    }
-
-    gContext->OMSetBlendState(NULL, NULL, 0xFFFFFFFF);
-
-    // Post processing
-    if (gui.renderDepthBuffer) {
-      gContext->OMSetRenderTargets(1, &gSwapChainRTV, NULL);
-      gContext->OMSetDepthStencilState(noDepthStencilState, 0);
-      useProgram(&fstProgram);
-      gContext->PSSetShaderResources(0, 1, &depthTextureView);
-      gContext->Draw(3, 0);
-      ID3D11ShaderResourceView *nullView = NULL;
-      gContext->PSSetShaderResources(0, 1, &nullView);
-    } else {
-      {
-          // ID3D11RenderTargetView *renderTargets[] = {
-          //     gSwapChainRTV,
-          // };
-
-          // gContext->OMSetRenderTargets(castI32U32(ARRAY_SIZE(renderTargets)),
-          //                              renderTargets, NULL);
-
-          // gContext->OMSetDepthStencilState(noDepthStencilState, 0);
-          // useProgram(&gSSAOProgram);
-          // ID3D11ShaderResourceView *resources[] = {
-          //     gPositionView,
-          //     gNormalView,
-          //     gAlbedoView,
-          // };
-          // gContext->PSSetShaderResources(0, ARRAY_SIZE(resources),
-          // resources); gContext->PSSetSamplers(0, 1, &postProcessSampler);
-          // gContext->Draw(3, 0);
-          // resources[0] = NULL;
-          // resources[1] = NULL;
-          // resources[2] = NULL;
-          // ID3D11SamplerState *nullSampler = NULL;
-          // gContext->PSSetShaderResources(0, ARRAY_SIZE(resources),
-          // resources); gContext->PSSetSamplers(0, 1, &nullSampler);
-
-          // renderTargets[0] = NULL;
-          // gContext->OMSetRenderTargets(castI32U32(ARRAY_SIZE(renderTargets)),
-          //                              renderTargets, NULL);
-      }
-
-      // Exposure tone mapping
-      {
-        ID3D11RenderTargetView *renderTargets[] = {
-            gSwapChainRTV,
-        };
-        gContext->OMSetRenderTargets(castI32U32(ARRAY_SIZE(renderTargets)),
-                                     renderTargets, NULL);
-        gContext->OMSetDepthStencilState(noDepthStencilState, 0);
-        useProgram(&exposureProgram);
-        gContext->PSSetShaderResources(0, 1, &renderedView);
-        gContext->PSSetSamplers(0, 1, &postProcessSampler);
-        gContext->Draw(3, 0);
-        ID3D11ShaderResourceView *nullResource = NULL;
-        ID3D11SamplerState *nullSampler = NULL;
-        gContext->PSSetShaderResources(0, 1, &nullResource);
-        gContext->PSSetSamplers(0, 1, &nullSampler);
-
-        renderTargets[0] = NULL;
-        gContext->OMSetRenderTargets(castI32U32(ARRAY_SIZE(renderTargets)),
-                                     renderTargets, NULL);
-      }
-      FLOAT clearColor[4] = {};
-      gContext->ClearRenderTargetView(gSwapChainRTV, clearColor);
-    }
-#endif
-
     renderGUI();
 
     swapBuffers();
@@ -606,43 +244,16 @@ int main(UNUSED int argc, UNUSED char **argv) {
 
   destroySSAOResources();
 
-  COM_RELEASE(irrView);
-  COM_RELEASE(skyView);
-  COM_RELEASE(irrTex);
-  COM_RELEASE(skyTex);
-
-  COM_RELEASE(skyIB);
-  COM_RELEASE(skyVB);
-
   for (int i = 0; i < numModels; ++i) {
     destroyModel(models[i]);
     MFREE(models[i]);
   }
-  // destroyModel(&model2);
-  // destroyModel(&model);
 
   COM_RELEASE(materialUniformBuffer);
   COM_RELEASE(drawUniformBuffer);
   COM_RELEASE(viewUniformBuffer);
 
-  // destroyProgram(&oitCompositeProgram);
-  // destroyProgram(&oitAccumProgram);
-  // destroyProgram(&fstProgram);
-  // destroyProgram(&wireframeProgram);
-  // destroyProgram(&exposureProgram);
-  // destroyProgram(&skyProgram);
-  // destroyProgram(&brdfProgram);
   destroyProgram(&forwardPBRProgram);
-
-  // COM_RELEASE(refBlendState);
-
-  // COM_RELEASE(noDepthStencilState);
-  // COM_RELEASE(skyDepthStencilState);
-
-  // COM_RELEASE(postProcessSampler);
-  // COM_RELEASE(renderedRTV);
-  // COM_RELEASE(renderedView);
-  // COM_RELEASE(renderedTexture);
 
   destroyRenderer();
 
