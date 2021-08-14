@@ -1,5 +1,5 @@
 #include "gui.h"
-#include "smokylab.h"
+#include "render.h"
 #include "camera.h"
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Weverything"

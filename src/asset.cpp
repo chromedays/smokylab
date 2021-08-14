@@ -1,6 +1,6 @@
 #include "asset.h"
 #include "util.h"
-#include "smokylab.h"
+#include "render.h"
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Weverything"
 #include <cgltf.h>

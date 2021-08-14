@@ -4,7 +4,7 @@ add_executable(
   smokylab
   gui.cpp
   main.cpp
-  smokylab.cpp
+  render.cpp
   str.c
   vmath.c
   asset.cpp

@@ -1,4 +1,4 @@
-#include "smokylab.h"
+#include "render.h"
 #include "util.h"
 #include "gui.h"
 #include "asset.h"
