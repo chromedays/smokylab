@@ -773,6 +773,7 @@ int main(UNUSED int argc, UNUSED char **argv) {
     }
 #endif
 
+    // Depth buffer is not needed for imgui
     gContext->OMSetRenderTargets(1, &gSwapChainRTV, NULL);
     renderGUI();
 

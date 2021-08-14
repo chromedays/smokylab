@@ -14,4 +14,6 @@ void initEditor(Editor *editor) {
   };
 }
 
-void updateEditor(Editor *editor) {}
+void updateEditor(Editor *editor) { (void)editor; }
+
+void renderEditor(const Editor *editor) {}
