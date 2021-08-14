@@ -11,6 +11,7 @@ FORWARD_DECL(Model);
 
 C_INTERFACE_BEGIN
 
+void initAssetLoaderFromConfigFile(void);
 void initAssetLoader(const char *assetRootPath, const char *shaderRootPath);
 void destroyAssetLoader(void);
 

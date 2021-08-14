@@ -3,6 +3,7 @@
 #include "gui.h"
 #include "asset.h"
 #include "camera.h"
+#include "app.h"
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Weverything"
 #define CGLTF_IMPLEMENTATION
@@ -19,104 +20,11 @@
 
 int main(UNUSED int argc, UNUSED char **argv) {
   // Initialize asset paths
-  {
-    String assetConfigPath = {};
-    copyBasePath(&assetConfigPath);
-    appendPathCStr(&assetConfigPath, "asset_config.txt");
-    FILE *assetConfigFile = fopen(assetConfigPath.buf, "r");
-    destroyString(&assetConfigPath);
-    ASSERT(assetConfigFile);
-    char assetBasePath[100] = {};
-    char shaderBasePath[100] = {};
-    fgets(assetBasePath, 100, assetConfigFile);
-    for (int i = 0; i < 100; ++i) {
-      if (assetBasePath[i] == '\n') {
-        assetBasePath[i] = 0;
-        break;
-      }
-    }
-    fgets(shaderBasePath, 100, assetConfigFile);
-    for (int i = 0; i < 100; ++i) {
-      if (shaderBasePath[i] == '\n') {
-        shaderBasePath[i] = 0;
-        break;
-      }
-    }
-    LOG("Asset base path: %s", assetBasePath);
-    LOG("Shader base path: %s", shaderBasePath);
+  initAssetLoaderFromConfigFile();
+  initApp("Smokylab", 1280, 720);
+  initRenderer();
 
-    fclose(assetConfigFile);
-    initAssetLoader(assetBasePath, shaderBasePath);
-  }
-
-  SetProcessDPIAware();
-
-  SDL_Init(SDL_INIT_VIDEO);
-  SDL_Window *window =
-      SDL_CreateWindow("Smokylab", SDL_WINDOWPOS_CENTERED,
-                       SDL_WINDOWPOS_CENTERED, 1280, 720, SDL_WINDOW_RESIZABLE);
-  SDL_SetWindowResizable(window, SDL_FALSE);
-
-  int ww, wh;
-  SDL_GetWindowSize(window, &ww, &wh);
-  DXGI_SWAP_CHAIN_DESC swapChainDesc = {
-      .BufferDesc =
-          {
-              .Width = castI32U32(ww),
-              .Height = castI32U32(wh),
-              .RefreshRate =
-                  queryRefreshRate(ww, wh, DXGI_FORMAT_R8G8B8A8_UNORM),
-              .Format = DXGI_FORMAT_R8G8B8A8_UNORM,
-          },
-      .SampleDesc =
-          {
-              .Count = 1,
-              .Quality = 0,
-          },
-      .BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT,
-      .BufferCount = 2,
-      .OutputWindow = getWin32WindowHandle(window),
-      .Windowed = TRUE,
-      .SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD,
-  };
-
-  UINT createDeviceFlags
-#ifdef DEBUG
-      = D3D11_CREATE_DEVICE_DEBUG;
-#else
-      = 0;
-#endif
-  D3D_FEATURE_LEVEL featureLevel = D3D_FEATURE_LEVEL_11_1;
-  HR_ASSERT(D3D11CreateDeviceAndSwapChain(
-      NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, createDeviceFlags, &featureLevel, 1,
-      D3D11_SDK_VERSION, &swapChainDesc, &gSwapChain, &gDevice, NULL,
-      &gContext));
-
-  ID3D11Texture2D *backBuffer;
-  HR_ASSERT(gSwapChain->GetBuffer(0, IID_PPV_ARGS(&backBuffer)));
-  HR_ASSERT(gDevice->CreateRenderTargetView(backBuffer, NULL, &gSwapChainRTV));
-  COM_RELEASE(backBuffer);
-
-  TextureDesc depthStencilTextureDesc = {
-      .width = ww,
-      .height = wh,
-      .format = DXGI_FORMAT_R32_TYPELESS,
-      .viewFormat = DXGI_FORMAT_R32_FLOAT,
-      .usage = D3D11_USAGE_DEFAULT,
-      .bindFlags = D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE,
-  };
-  ID3D11ShaderResourceView *depthTextureView;
-  createTexture2D(&depthStencilTextureDesc, &gSwapChainDepthStencilBuffer,
-                  &depthTextureView);
-  D3D11_DEPTH_STENCIL_VIEW_DESC depthStencilViewDesc = {
-      .Format = DXGI_FORMAT_D32_FLOAT,
-      .ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D,
-      .Flags = 0,
-      .Texture2D = {.MipSlice = 0},
-  };
-  HR_ASSERT(gDevice->CreateDepthStencilView(
-      gSwapChainDepthStencilBuffer, &depthStencilViewDesc, &gSwapChainDSV));
-
+#if 0
   ID3D11Texture2D *renderedTexture;
   ID3D11ShaderResourceView *renderedView;
   ID3D11RenderTargetView *renderedRTV;
@@ -168,43 +76,9 @@ int main(UNUSED int argc, UNUSED char **argv) {
   createTexture2D(&oitRevealTextureDesc, &oitRevealTexture, &oitRevealView);
   HR_ASSERT(
       gDevice->CreateRenderTargetView(oitRevealTexture, NULL, &oitRevealRTV));
+#endif
 
-  TextureDesc defaultTextureDesc = {
-      .width = 16,
-      .height = 16,
-      .bytesPerPixel = 4,
-      .format = DXGI_FORMAT_R8G8B8A8_UNORM,
-      .usage = D3D11_USAGE_IMMUTABLE,
-      .bindFlags = D3D11_BIND_SHADER_RESOURCE,
-  };
-  defaultTextureDesc.initialData = MMALLOC_ARRAY(
-      uint32_t, defaultTextureDesc.width * defaultTextureDesc.height);
-  for (int i = 0; i < defaultTextureDesc.width * defaultTextureDesc.height;
-       ++i) {
-    ((uint32_t *)defaultTextureDesc.initialData)[i] = 0xffffffff;
-  }
-  createTexture2D(&defaultTextureDesc, &gDefaultTexture, &gDefaultTextureView);
-  MFREE(defaultTextureDesc.initialData);
-
-  D3D11_SAMPLER_DESC defaultSamplerDesc = {
-      .Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR,
-      .AddressU = D3D11_TEXTURE_ADDRESS_WRAP,
-      .AddressV = D3D11_TEXTURE_ADDRESS_WRAP,
-      .AddressW = D3D11_TEXTURE_ADDRESS_WRAP,
-      .MaxLOD = D3D11_FLOAT32_MAX,
-  };
-  gDevice->CreateSamplerState(&defaultSamplerDesc, &gDefaultSampler);
-
-  ID3D11DepthStencilState *depthStencilState;
-  D3D11_DEPTH_STENCIL_DESC depthStencilStateDesc = {
-      .DepthEnable = TRUE,
-      .DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL,
-      .DepthFunc = D3D11_COMPARISON_GREATER_EQUAL,
-      .StencilEnable = FALSE,
-  };
-  HR_ASSERT(gDevice->CreateDepthStencilState(&depthStencilStateDesc,
-                                             &depthStencilState));
-
+#if 0
   ID3D11DepthStencilState *skyDepthStencilState;
   D3D11_DEPTH_STENCIL_DESC skyDepthStencilStateDesc = {
       .DepthEnable = TRUE,
@@ -232,39 +106,9 @@ int main(UNUSED int argc, UNUSED char **argv) {
   };
   HR_ASSERT(gDevice->CreateDepthStencilState(&oitAccumDepthStencilStateDesc,
                                              &oitAccumDepthStencilState));
+#endif
 
-  ID3D11RasterizerState *rasterizerState;
-  D3D11_RASTERIZER_DESC rasterizerStateDesc = {
-      .FillMode = D3D11_FILL_SOLID,
-      .CullMode = D3D11_CULL_BACK,
-      .FrontCounterClockwise = TRUE,
-      .DepthBias = 0,
-      .DepthBiasClamp = 0.f,
-      .SlopeScaledDepthBias = 0.f,
-      .DepthClipEnable = TRUE,
-      .ScissorEnable = FALSE,
-      .MultisampleEnable = FALSE,
-      .AntialiasedLineEnable = FALSE,
-  };
-  HR_ASSERT(
-      gDevice->CreateRasterizerState(&rasterizerStateDesc, &rasterizerState));
-
-  ID3D11RasterizerState *wireframeRasterizerState;
-  D3D11_RASTERIZER_DESC wireframeRasterizerStateDesc = {
-      .FillMode = D3D11_FILL_WIREFRAME,
-      .CullMode = D3D11_CULL_FRONT,
-      .FrontCounterClockwise = TRUE,
-      .DepthBias = 0,
-      .DepthBiasClamp = 0.f,
-      .SlopeScaledDepthBias = 0.f,
-      .DepthClipEnable = TRUE,
-      .ScissorEnable = FALSE,
-      .MultisampleEnable = FALSE,
-      .AntialiasedLineEnable = FALSE,
-  };
-  HR_ASSERT(gDevice->CreateRasterizerState(&wireframeRasterizerStateDesc,
-                                           &wireframeRasterizerState));
-
+#if 0
   // Sorted blend state for reference
   ID3D11BlendState *refBlendState;
   D3D11_BLEND_DESC refBlendDesc = {
@@ -327,6 +171,7 @@ int main(UNUSED int argc, UNUSED char **argv) {
   };
   HR_ASSERT(gDevice->CreateBlendState(&oitCompositeBlendDesc,
                                       &oitCompositeBlendState));
+#endif
 
   // createSSAOResources(ww, wh);
 
@@ -446,7 +291,7 @@ int main(UNUSED int argc, UNUSED char **argv) {
   Camera cam;
   initCameraLookingAtTarget(&cam, float3(-5, 1, 0), float3(-5, 1.105f, -1));
 
-  initGUI(window, gDevice, gContext);
+  initGUI();
   GUI gui = {
       .exposure = 1,
       .depthVisualizedRangeFar = 15,
@@ -503,7 +348,7 @@ int main(UNUSED int argc, UNUSED char **argv) {
       }
     }
 
-    updateGUI(window, &gui);
+    updateGUI(&gui);
     viewUniforms.exposureNearFar.xz =
         float2(gui.exposure, gui.depthVisualizedRangeFar);
     viewUniforms.dirLightDirIntensity.xyz = float3Normalize(float3(
@@ -516,7 +361,8 @@ int main(UNUSED int argc, UNUSED char **argv) {
 
     float dt = ct_time();
 
-    SDL_GetWindowSize(window, &ww, &wh);
+    int ww, wh;
+    SDL_GetWindowSize(gApp.window, &ww, &wh);
 
     int cursorX;
     int cursorY;
@@ -562,45 +408,23 @@ int main(UNUSED int argc, UNUSED char **argv) {
     viewUniforms.projMat =
         mat4Perspective(60, (float)ww / (float)wh, nearZ, farZ);
 
-    gContext->UpdateSubresource(viewUniformBuffer, 0, NULL, &viewUniforms, 0,
-                                0);
+    updateBufferData(viewUniformBuffer, &viewUniforms);
 
     DrawUniforms drawUniforms = {
         .modelMat = mat4Identity(),
         .invModelMat = mat4Identity(),
     };
-    gContext->UpdateSubresource(drawUniformBuffer, 0, NULL, &drawUniforms, 0,
-                                0);
+    updateBufferData(drawUniformBuffer, &drawUniforms);
 
     ID3D11Buffer *uniformBuffers[] = {viewUniformBuffer, drawUniformBuffer,
                                       materialUniformBuffer};
-    gContext->VSSetConstantBuffers(0, ARRAY_SIZE(uniformBuffers),
-                                   uniformBuffers);
-    gContext->PSSetConstantBuffers(0, ARRAY_SIZE(uniformBuffers),
-                                   uniformBuffers);
+    bindBuffers(ARRAY_SIZE(uniformBuffers), uniformBuffers);
 
-    D3D11_VIEWPORT viewport = {
-        .TopLeftX = 0,
-        .TopLeftY = 0,
-        .Width = (float)ww,
-        .Height = (float)wh,
-        .MinDepth = 0,
-        .MaxDepth = 1,
-    };
-    gContext->RSSetViewports(1, &viewport);
+    setViewport(0, 0, (float)ww, (float)wh);
 
     {
-      gContext->OMSetRenderTargets(1, &gSwapChainRTV, gSwapChainDSV);
-      FLOAT clearColor[4] = {};
-      gContext->ClearRenderTargetView(gSwapChainRTV, clearColor);
-      gContext->ClearDepthStencilView(gSwapChainDSV, D3D11_CLEAR_DEPTH, 0, 0);
-
-      gContext->RSSetState(rasterizerState);
-      gContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-      gContext->OMSetDepthStencilState(depthStencilState, 0);
-      gContext->OMSetBlendState(NULL, NULL, 0xFFFFFFFF);
+      setDefaultRenderStates(float4(0, 0, 0, 0));
       useProgram(&forwardPBRProgram);
-
       for (int i = 0; i < numModels; ++i) {
         renderModel(models[i], drawUniformBuffer, materialUniformBuffer);
       }
@@ -773,11 +597,9 @@ int main(UNUSED int argc, UNUSED char **argv) {
     }
 #endif
 
-    // Depth buffer is not needed for imgui
-    gContext->OMSetRenderTargets(1, &gSwapChainRTV, NULL);
     renderGUI();
 
-    gSwapChain->Present(1, 0);
+    swapBuffers();
   }
 
   destroyGUI();
@@ -812,52 +634,19 @@ int main(UNUSED int argc, UNUSED char **argv) {
   // destroyProgram(&brdfProgram);
   destroyProgram(&forwardPBRProgram);
 
-  COM_RELEASE(refBlendState);
-  COM_RELEASE(wireframeRasterizerState);
-  COM_RELEASE(rasterizerState);
+  // COM_RELEASE(refBlendState);
 
-  COM_RELEASE(noDepthStencilState);
-  COM_RELEASE(skyDepthStencilState);
-  COM_RELEASE(depthStencilState);
+  // COM_RELEASE(noDepthStencilState);
+  // COM_RELEASE(skyDepthStencilState);
 
-  COM_RELEASE(gDefaultSampler);
-  COM_RELEASE(gDefaultTextureView);
-  COM_RELEASE(gDefaultTexture);
+  // COM_RELEASE(postProcessSampler);
+  // COM_RELEASE(renderedRTV);
+  // COM_RELEASE(renderedView);
+  // COM_RELEASE(renderedTexture);
 
-  COM_RELEASE(postProcessSampler);
-  COM_RELEASE(renderedRTV);
-  COM_RELEASE(renderedView);
-  COM_RELEASE(renderedTexture);
+  destroyRenderer();
 
-  COM_RELEASE(gSwapChainDSV);
-  COM_RELEASE(depthTextureView);
-  COM_RELEASE(gSwapChainDepthStencilBuffer);
-  COM_RELEASE(gSwapChainRTV);
-  COM_RELEASE(gSwapChain);
-  COM_RELEASE(gContext);
-  COM_RELEASE(gDevice);
-
-#ifdef DEBUG
-  {
-    IDXGIDebug *debug;
-    HMODULE dxgidebugLibrary = LoadLibraryA("dxgidebug.dll");
-
-    typedef HRESULT(WINAPI * DXGIGetDebugInterfaceFn)(REFIID riid,
-                                                      void **ppDebug);
-    DXGIGetDebugInterfaceFn DXGIGetDebugInterface =
-        (DXGIGetDebugInterfaceFn)GetProcAddress(dxgidebugLibrary,
-                                                "DXGIGetDebugInterface");
-    DXGIGetDebugInterface(IID_PPV_ARGS(&debug));
-    HR_ASSERT(debug->ReportLiveObjects(DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_ALL));
-
-    FreeLibrary(dxgidebugLibrary);
-    COM_RELEASE(debug);
-  }
-#endif
-
-  SDL_DestroyWindow(window);
-
-  SDL_Quit();
+  destroyApp();
 
   destroyAssetLoader();
 

@@ -1,5 +1,6 @@
 #include "gui.h"
 #include "render.h"
+#include "app.h"
 #include "camera.h"
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Weverything"
@@ -11,12 +12,12 @@
 
 C_INTERFACE_BEGIN
 
-void initGUI(SDL_Window *window, ID3D11Device *device,
-             ID3D11DeviceContext *deviceContext) {
+void initGUI(void) {
   ImGui::CreateContext();
   ImGui::StyleColorsLight();
-  ImGui_ImplSDL2_InitForD3D(window);
-  ImGui_ImplDX11_Init(device, deviceContext);
+  ImGui_ImplSDL2_InitForD3D(gApp.window);
+  ImGui_ImplDX11_Init((ID3D11Device *)gRenderer.device,
+                      (ID3D11DeviceContext *)gRenderer.deviceContext);
   ImGui::GetStyle().Alpha = 0.6f;
 
   ImVec4 *colors = ImGui::GetStyle().Colors;
@@ -186,16 +187,16 @@ static void renderMainMenues(MainMenuContext *mmctx, GUI *gui) {
   gFocusedMainMenuID = newFocusedMenuID;
 }
 
-void updateGUI(SDL_Window *window, GUI *gui) {
+void updateGUI(GUI *gui) {
   ImGui_ImplDX11_NewFrame();
-  ImGui_ImplSDL2_NewFrame(window);
+  ImGui_ImplSDL2_NewFrame(gApp.window);
 
   ImGui::NewFrame();
 
   // ImGui::ShowDemoWindow();
 
   int ww, wh;
-  SDL_GetWindowSize(window, &ww, &wh);
+  SDL_GetWindowSize(gApp.window, &ww, &wh);
   if (gui->openMenu) {
     ImGui::SetNextWindowSize({300, 0});
   } else {
@@ -239,7 +240,11 @@ void updateGUI(SDL_Window *window, GUI *gui) {
   ImGui::Render();
 }
 
-void renderGUI(void) { ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData()); }
+void renderGUI(void) {
+  // Depth buffer is not needed for imgui
+  // gContext->OMSetRenderTargets(1, &gSwapChainRTV, NULL);
+  ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
+}
 
 bool guiWantsCaptureMouse(void) { return ImGui::GetIO().WantCaptureMouse; }
 

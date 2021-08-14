@@ -1,25 +1,203 @@
 #include "render.h"
 #include "util.h"
 #include "asset.h"
+#include "app.h"
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Weverything"
 #include <cgltf.h>
 #include <stb_image.h>
+#include <SDL2/SDL.h>
 #include <SDL2/SDL_syswm.h>
 #include <d3d11shader.h>
 #pragma clang diagnostic pop
 #include <random>
 
-ID3D11Device *gDevice;
-ID3D11DeviceContext *gContext;
-IDXGISwapChain *gSwapChain;
-ID3D11RenderTargetView *gSwapChainRTV;
-ID3D11Texture2D *gSwapChainDepthStencilBuffer;
-ID3D11DepthStencilView *gSwapChainDSV;
+Renderer gRenderer;
 
-ID3D11Texture2D *gDefaultTexture;
-ID3D11ShaderResourceView *gDefaultTextureView;
-ID3D11SamplerState *gDefaultSampler;
+static ID3D11Device *gDevice;
+static ID3D11DeviceContext *gContext;
+static IDXGISwapChain *gSwapChain;
+static ID3D11RenderTargetView *gSwapChainRTV;
+static ID3D11Texture2D *gSwapChainDepthStencilBuffer;
+static ID3D11ShaderResourceView *gSwapChainDepthTextureView;
+static ID3D11DepthStencilView *gSwapChainDSV;
+
+static ID3D11Texture2D *gDefaultTexture;
+static ID3D11ShaderResourceView *gDefaultTextureView;
+static ID3D11SamplerState *gDefaultSampler;
+
+static ID3D11DepthStencilState *gDefaultDepthStencilState;
+static ID3D11RasterizerState *gDefaultRasterizerState;
+
+void initRenderer(void) {
+  int windowWidth, windowHeight;
+  SDL_GetWindowSize(gApp.window, &windowWidth, &windowHeight);
+
+  DXGI_SWAP_CHAIN_DESC swapChainDesc = {
+      .BufferDesc =
+          {
+              .Width = castI32U32(windowWidth),
+              .Height = castI32U32(windowHeight),
+              .RefreshRate = queryRefreshRate(windowWidth, windowHeight,
+                                              DXGI_FORMAT_R8G8B8A8_UNORM),
+              .Format = DXGI_FORMAT_R8G8B8A8_UNORM,
+          },
+      .SampleDesc =
+          {
+              .Count = 1,
+              .Quality = 0,
+          },
+      .BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT,
+      .BufferCount = 2,
+      .OutputWindow = getWin32WindowHandle(gApp.window),
+      .Windowed = TRUE,
+      .SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD,
+  };
+
+  UINT createDeviceFlags
+#ifdef DEBUG
+      = D3D11_CREATE_DEVICE_DEBUG;
+#else
+      = 0;
+#endif
+  D3D_FEATURE_LEVEL featureLevel = D3D_FEATURE_LEVEL_11_1;
+  HR_ASSERT(D3D11CreateDeviceAndSwapChain(
+      NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, createDeviceFlags, &featureLevel, 1,
+      D3D11_SDK_VERSION, &swapChainDesc, &gSwapChain, &gDevice, NULL,
+      &gContext));
+
+  gRenderer.device = (GPUDevice *)gDevice;
+  gRenderer.deviceContext = (GPUDeviceContext *)gContext;
+
+  ID3D11Texture2D *backBuffer;
+  HR_ASSERT(gSwapChain->GetBuffer(0, IID_PPV_ARGS(&backBuffer)));
+  HR_ASSERT(gDevice->CreateRenderTargetView(backBuffer, NULL, &gSwapChainRTV));
+  COM_RELEASE(backBuffer);
+
+  TextureDesc depthStencilTextureDesc = {
+      .width = windowWidth,
+      .height = windowHeight,
+      .format = DXGI_FORMAT_R32_TYPELESS,
+      .viewFormat = DXGI_FORMAT_R32_FLOAT,
+      .usage = D3D11_USAGE_DEFAULT,
+      .bindFlags = D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE,
+  };
+  createTexture2D(&depthStencilTextureDesc, &gSwapChainDepthStencilBuffer,
+                  &gSwapChainDepthTextureView);
+
+  D3D11_DEPTH_STENCIL_VIEW_DESC depthStencilViewDesc = {
+      .Format = DXGI_FORMAT_D32_FLOAT,
+      .ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D,
+      .Flags = 0,
+      .Texture2D = {.MipSlice = 0},
+  };
+  HR_ASSERT(gDevice->CreateDepthStencilView(
+      gSwapChainDepthStencilBuffer, &depthStencilViewDesc, &gSwapChainDSV));
+
+  TextureDesc defaultTextureDesc = {
+      .width = 16,
+      .height = 16,
+      .bytesPerPixel = 4,
+      .format = DXGI_FORMAT_R8G8B8A8_UNORM,
+      .usage = D3D11_USAGE_IMMUTABLE,
+      .bindFlags = D3D11_BIND_SHADER_RESOURCE,
+  };
+  defaultTextureDesc.initialData = MMALLOC_ARRAY(
+      uint32_t, defaultTextureDesc.width * defaultTextureDesc.height);
+  for (int i = 0; i < defaultTextureDesc.width * defaultTextureDesc.height;
+       ++i) {
+    ((uint32_t *)defaultTextureDesc.initialData)[i] = 0xffffffff;
+  }
+  createTexture2D(&defaultTextureDesc, &gDefaultTexture, &gDefaultTextureView);
+  MFREE(defaultTextureDesc.initialData);
+
+  D3D11_SAMPLER_DESC defaultSamplerDesc = {
+      .Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR,
+      .AddressU = D3D11_TEXTURE_ADDRESS_WRAP,
+      .AddressV = D3D11_TEXTURE_ADDRESS_WRAP,
+      .AddressW = D3D11_TEXTURE_ADDRESS_WRAP,
+      .MaxLOD = D3D11_FLOAT32_MAX,
+  };
+  gDevice->CreateSamplerState(&defaultSamplerDesc, &gDefaultSampler);
+
+  D3D11_DEPTH_STENCIL_DESC depthStencilStateDesc = {
+      .DepthEnable = TRUE,
+      .DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL,
+      .DepthFunc = D3D11_COMPARISON_GREATER_EQUAL,
+      .StencilEnable = FALSE,
+  };
+  HR_ASSERT(gDevice->CreateDepthStencilState(&depthStencilStateDesc,
+                                             &gDefaultDepthStencilState));
+
+  D3D11_RASTERIZER_DESC rasterizerStateDesc = {
+      .FillMode = D3D11_FILL_SOLID,
+      .CullMode = D3D11_CULL_BACK,
+      .FrontCounterClockwise = TRUE,
+      .DepthBias = 0,
+      .DepthBiasClamp = 0.f,
+      .SlopeScaledDepthBias = 0.f,
+      .DepthClipEnable = TRUE,
+      .ScissorEnable = FALSE,
+      .MultisampleEnable = FALSE,
+      .AntialiasedLineEnable = FALSE,
+  };
+  HR_ASSERT(gDevice->CreateRasterizerState(&rasterizerStateDesc,
+                                           &gDefaultRasterizerState));
+
+  // ID3D11RasterizerState *wireframeRasterizerState;
+  // D3D11_RASTERIZER_DESC wireframeRasterizerStateDesc = {
+  //     .FillMode = D3D11_FILL_WIREFRAME,
+  //     .CullMode = D3D11_CULL_FRONT,
+  //     .FrontCounterClockwise = TRUE,
+  //     .DepthBias = 0,
+  //     .DepthBiasClamp = 0.f,
+  //     .SlopeScaledDepthBias = 0.f,
+  //     .DepthClipEnable = TRUE,
+  //     .ScissorEnable = FALSE,
+  //     .MultisampleEnable = FALSE,
+  //     .AntialiasedLineEnable = FALSE,
+  // };
+  // HR_ASSERT(gDevice->CreateRasterizerState(&wireframeRasterizerStateDesc,
+  //                                          &wireframeRasterizerState));
+}
+
+void destroyRenderer(void) {
+
+  // COM_RELEASE(wireframeRasterizerState);
+  COM_RELEASE(gDefaultRasterizerState);
+  COM_RELEASE(gDefaultDepthStencilState);
+
+  COM_RELEASE(gDefaultSampler);
+  COM_RELEASE(gDefaultTextureView);
+  COM_RELEASE(gDefaultTexture);
+
+  COM_RELEASE(gSwapChainDSV);
+  COM_RELEASE(gSwapChainDepthTextureView);
+  COM_RELEASE(gSwapChainDepthStencilBuffer);
+  COM_RELEASE(gSwapChainRTV);
+  COM_RELEASE(gSwapChain);
+
+  COM_RELEASE(gContext);
+  COM_RELEASE(gDevice);
+
+#ifdef DEBUG
+  {
+    IDXGIDebug *debug;
+    HMODULE dxgidebugLibrary = LoadLibraryA("dxgidebug.dll");
+
+    typedef HRESULT(WINAPI * DXGIGetDebugInterfaceFn)(REFIID riid,
+                                                      void **ppDebug);
+    DXGIGetDebugInterfaceFn DXGIGetDebugInterface =
+        (DXGIGetDebugInterfaceFn)GetProcAddress(dxgidebugLibrary,
+                                                "DXGIGetDebugInterface");
+    DXGIGetDebugInterface(IID_PPV_ARGS(&debug));
+    HR_ASSERT(debug->ReportLiveObjects(DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_ALL));
+
+    FreeLibrary(dxgidebugLibrary);
+    COM_RELEASE(debug);
+  }
+#endif
+}
 
 DXGI_RATIONAL queryRefreshRate(int ww, int wh, DXGI_FORMAT swapChainFormat) {
   DXGI_RATIONAL refreshRate = {};
@@ -67,6 +245,106 @@ HWND getWin32WindowHandle(SDL_Window *window) {
   return hwnd;
 }
 
+void setViewport(float x, float y, float w, float h) {
+  D3D11_VIEWPORT viewport = {
+      .TopLeftX = x,
+      .TopLeftY = y,
+      .Width = w,
+      .Height = h,
+      .MinDepth = 0,
+      .MaxDepth = 1,
+  };
+  gContext->RSSetViewports(1, &viewport);
+}
+
+void setDefaultRenderStates(Float4 clearColor) {
+  gContext->OMSetRenderTargets(1, &gSwapChainRTV, gSwapChainDSV);
+  gContext->ClearRenderTargetView(gSwapChainRTV, (FLOAT *)&clearColor);
+  gContext->ClearDepthStencilView(gSwapChainDSV, D3D11_CLEAR_DEPTH, 0, 0);
+
+  gContext->RSSetState(gDefaultRasterizerState);
+  gContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+  gContext->OMSetDepthStencilState(gDefaultDepthStencilState, 0);
+  gContext->OMSetBlendState(NULL, NULL, 0xFFFFFFFF);
+}
+
+void swapBuffers(void) { gSwapChain->Present(1, 0); }
+
+void createProgram(ShaderProgram *program, int vertSrcSize, void *vertSrc,
+                   int fragSrcSize, void *fragSrc) {
+
+  HR_ASSERT(gDevice->CreateVertexShader(vertSrc, castI32U32(vertSrcSize), NULL,
+                                        &program->vert));
+
+  ID3D11ShaderReflection *refl;
+  HR_ASSERT(D3DReflect(vertSrc, castI32U32(vertSrcSize), IID_PPV_ARGS(&refl)));
+
+  D3D11_SHADER_DESC shaderDesc;
+  HR_ASSERT(refl->GetDesc(&shaderDesc));
+
+  D3D11_INPUT_ELEMENT_DESC *inputAttribs = MMALLOC_ARRAY(
+      D3D11_INPUT_ELEMENT_DESC, castU32I32(shaderDesc.InputParameters));
+
+  for (UINT i = 0; i < shaderDesc.InputParameters; ++i) {
+    D3D11_SIGNATURE_PARAMETER_DESC paramDesc;
+    HR_ASSERT(refl->GetInputParameterDesc(i, &paramDesc));
+
+    D3D11_INPUT_ELEMENT_DESC *attrib = &inputAttribs[i];
+
+    attrib->SemanticName = paramDesc.SemanticName;
+    attrib->SemanticIndex = paramDesc.SemanticIndex;
+    attrib->AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT;
+    attrib->InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
+
+    if (paramDesc.Mask == 1) // 1
+    {
+      if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_UINT32) {
+        attrib->Format = DXGI_FORMAT_R32_UINT;
+      } else if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_SINT32) {
+
+        attrib->Format = DXGI_FORMAT_R32_SINT;
+      } else if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_FLOAT32) {
+        attrib->Format = DXGI_FORMAT_R32_FLOAT;
+      }
+    } else if (paramDesc.Mask <= 3) // 11
+    {
+      if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_UINT32) {
+        attrib->Format = DXGI_FORMAT_R32G32_UINT;
+      } else if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_SINT32) {
+        attrib->Format = DXGI_FORMAT_R32G32_SINT;
+      } else if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_FLOAT32) {
+        attrib->Format = DXGI_FORMAT_R32G32_FLOAT;
+      }
+    } else if (paramDesc.Mask <= 7) // 111
+    {
+      if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_UINT32) {
+        attrib->Format = DXGI_FORMAT_R32G32B32_UINT;
+      } else if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_SINT32) {
+        attrib->Format = DXGI_FORMAT_R32G32B32_SINT;
+      } else if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_FLOAT32) {
+        attrib->Format = DXGI_FORMAT_R32G32B32_FLOAT;
+      }
+    } else if (paramDesc.Mask <= 15) // 1111
+    {
+      if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_UINT32) {
+        attrib->Format = DXGI_FORMAT_R32G32B32A32_UINT;
+      } else if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_SINT32) {
+        attrib->Format = DXGI_FORMAT_R32G32B32A32_SINT;
+      } else if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_FLOAT32) {
+        attrib->Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+      }
+    }
+  }
+
+  HR_ASSERT(gDevice->CreateInputLayout(inputAttribs, shaderDesc.InputParameters,
+                                       vertSrc, castI32U32(vertSrcSize),
+                                       &program->inputLayout));
+
+  MFREE(inputAttribs);
+
+  HR_ASSERT(gDevice->CreatePixelShader(fragSrc, castI32U32(fragSrcSize), NULL,
+                                       &program->frag));
+}
 void destroyProgram(ShaderProgram *program) {
   COM_RELEASE(program->frag);
   COM_RELEASE(program->vert);
@@ -95,6 +373,15 @@ void createBuffer(const BufferDesc *desc, ID3D11Buffer **buffer) {
   } else {
     HR_ASSERT(gDevice->CreateBuffer(&bufferDesc, NULL, buffer));
   }
+}
+
+void updateBufferData(ID3D11Buffer *buffer, void *data) {
+  gContext->UpdateSubresource(buffer, 0, NULL, data, 0, 0);
+}
+
+void bindBuffers(int numBuffers, ID3D11Buffer **buffers) {
+  gContext->VSSetConstantBuffers(0, castI32U32(numBuffers), buffers);
+  gContext->PSSetConstantBuffers(0, castI32U32(numBuffers), buffers);
 }
 
 void createTexture2D(const TextureDesc *desc, ID3D11Texture2D **texture,
@@ -162,6 +449,11 @@ void createTexture2D(const TextureDesc *desc, ID3D11Texture2D **texture,
       gContext->GenerateMips(*textureView);
     }
   }
+}
+
+void createSampler(const D3D11_SAMPLER_DESC *desc,
+                   ID3D11SamplerState **sampler) {
+  HR_ASSERT(gDevice->CreateSamplerState(desc, sampler));
 }
 
 void destroyModel(Model *model) {
@@ -325,19 +617,19 @@ void generateHammersleySequence(int n, Float4 *values) {
   avg /= (float)n;
 }
 
-ID3D11Texture2D *gPositionTexture;
-ID3D11ShaderResourceView *gPositionView;
-ID3D11RenderTargetView *gPositionRTV;
+static ID3D11Texture2D *gPositionTexture;
+static ID3D11ShaderResourceView *gPositionView;
+static ID3D11RenderTargetView *gPositionRTV;
 
-ID3D11Texture2D *gNormalTexture;
-ID3D11ShaderResourceView *gNormalView;
-ID3D11RenderTargetView *gNormalRTV;
+static ID3D11Texture2D *gNormalTexture;
+static ID3D11ShaderResourceView *gNormalView;
+static ID3D11RenderTargetView *gNormalRTV;
 
-ID3D11Texture2D *gAlbedoTexture;
-ID3D11ShaderResourceView *gAlbedoView;
-ID3D11RenderTargetView *gAlbedoRTV;
+static ID3D11Texture2D *gAlbedoTexture;
+static ID3D11ShaderResourceView *gAlbedoView;
+static ID3D11RenderTargetView *gAlbedoRTV;
 
-ShaderProgram gSSAOProgram;
+static ShaderProgram gSSAOProgram;
 
 void createSSAOResources(int ww, int wh) {
   TextureDesc textureDesc = {

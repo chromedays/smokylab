@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.11)
 
 add_executable(
   smokylab
+  app.c
   gui.cpp
   main.cpp
   render.cpp

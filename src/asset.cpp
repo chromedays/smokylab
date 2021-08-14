@@ -14,6 +14,36 @@
 static String gAssetRootPath;
 static String gShaderRootPath;
 
+void initAssetLoaderFromConfigFile(void) {
+  String assetConfigPath = {};
+  copyBasePath(&assetConfigPath);
+  appendPathCStr(&assetConfigPath, "asset_config.txt");
+  FILE *assetConfigFile = fopen(assetConfigPath.buf, "r");
+  destroyString(&assetConfigPath);
+  ASSERT(assetConfigFile);
+  char assetBasePath[100] = {};
+  char shaderBasePath[100] = {};
+  fgets(assetBasePath, 100, assetConfigFile);
+  for (int i = 0; i < 100; ++i) {
+    if (assetBasePath[i] == '\n') {
+      assetBasePath[i] = 0;
+      break;
+    }
+  }
+  fgets(shaderBasePath, 100, assetConfigFile);
+  for (int i = 0; i < 100; ++i) {
+    if (shaderBasePath[i] == '\n') {
+      shaderBasePath[i] = 0;
+      break;
+    }
+  }
+  LOG("Asset base path: %s", assetBasePath);
+  LOG("Shader base path: %s", shaderBasePath);
+
+  fclose(assetConfigFile);
+  initAssetLoader(assetBasePath, shaderBasePath);
+}
+
 void initAssetLoader(const char *assetRootPath, const char *shaderRootPath) {
   copyStringFromCStr(&gAssetRootPath, assetRootPath);
   copyStringFromCStr(&gShaderRootPath, shaderRootPath);
@@ -43,107 +73,33 @@ void loadProgram(const char *baseName, ShaderProgram *program) {
   String basePath = {};
   copyShaderRootPath(&basePath);
 
-  {
-    String vertPath = {};
-    copyString(&vertPath, &basePath);
-    appendPathCStr(&vertPath, baseName);
-    appendCStr(&vertPath, ".vs.cso");
+  String vertPath = {};
+  copyString(&vertPath, &basePath);
+  appendPathCStr(&vertPath, baseName);
+  appendCStr(&vertPath, ".vs.cso");
 
-    void *vertSrc;
-    int vertSize;
-    LOG("Opening vertex shader at %s", vertPath.buf);
-    readFile(&vertPath, &vertSrc, &vertSize);
-    HR_ASSERT(gDevice->CreateVertexShader(vertSrc, castI32U32(vertSize), NULL,
-                                          &program->vert));
+  void *vertSrc;
+  int vertSrcSize;
+  LOG("Opening vertex shader at %s", vertPath.buf);
+  readFile(&vertPath, &vertSrc, &vertSrcSize);
 
-    ID3D11ShaderReflection *refl;
-    HR_ASSERT(D3DReflect(vertSrc, castI32U32(vertSize), IID_PPV_ARGS(&refl)));
+  String fragPath = {};
+  copyString(&fragPath, &basePath);
+  appendPathCStr(&fragPath, baseName);
+  appendCStr(&fragPath, ".fs.cso");
 
-    D3D11_SHADER_DESC shaderDesc;
-    HR_ASSERT(refl->GetDesc(&shaderDesc));
+  void *fragSrc;
+  int fragSrcSize;
+  LOG("Opening fragment shader at %s", fragPath.buf);
+  readFile(&fragPath, &fragSrc, &fragSrcSize);
 
-    D3D11_INPUT_ELEMENT_DESC *inputAttribs = MMALLOC_ARRAY(
-        D3D11_INPUT_ELEMENT_DESC, castU32I32(shaderDesc.InputParameters));
+  createProgram(program, vertSrcSize, vertSrc, fragSrcSize, fragSrc);
 
-    for (UINT i = 0; i < shaderDesc.InputParameters; ++i) {
-      D3D11_SIGNATURE_PARAMETER_DESC paramDesc;
-      HR_ASSERT(refl->GetInputParameterDesc(i, &paramDesc));
+  MFREE(fragSrc);
+  destroyString(&fragPath);
 
-      D3D11_INPUT_ELEMENT_DESC *attrib = &inputAttribs[i];
-
-      attrib->SemanticName = paramDesc.SemanticName;
-      attrib->SemanticIndex = paramDesc.SemanticIndex;
-      attrib->AlignedByteOffset = D3D11_APPEND_ALIGNED_ELEMENT;
-      attrib->InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
-
-      if (paramDesc.Mask == 1) // 1
-      {
-        if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_UINT32) {
-          attrib->Format = DXGI_FORMAT_R32_UINT;
-        } else if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_SINT32) {
-
-          attrib->Format = DXGI_FORMAT_R32_SINT;
-        } else if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_FLOAT32) {
-          attrib->Format = DXGI_FORMAT_R32_FLOAT;
-        }
-      } else if (paramDesc.Mask <= 3) // 11
-      {
-        if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_UINT32) {
-          attrib->Format = DXGI_FORMAT_R32G32_UINT;
-        } else if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_SINT32) {
-          attrib->Format = DXGI_FORMAT_R32G32_SINT;
-        } else if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_FLOAT32) {
-          attrib->Format = DXGI_FORMAT_R32G32_FLOAT;
-        }
-      } else if (paramDesc.Mask <= 7) // 111
-      {
-        if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_UINT32) {
-          attrib->Format = DXGI_FORMAT_R32G32B32_UINT;
-        } else if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_SINT32) {
-          attrib->Format = DXGI_FORMAT_R32G32B32_SINT;
-        } else if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_FLOAT32) {
-          attrib->Format = DXGI_FORMAT_R32G32B32_FLOAT;
-        }
-      } else if (paramDesc.Mask <= 15) // 1111
-      {
-        if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_UINT32) {
-          attrib->Format = DXGI_FORMAT_R32G32B32A32_UINT;
-        } else if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_SINT32) {
-          attrib->Format = DXGI_FORMAT_R32G32B32A32_SINT;
-        } else if (paramDesc.ComponentType == D3D_REGISTER_COMPONENT_FLOAT32) {
-          attrib->Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
-        }
-      }
-    }
-
-    HR_ASSERT(gDevice->CreateInputLayout(
-        inputAttribs, shaderDesc.InputParameters, vertSrc, castI32U32(vertSize),
-        &program->inputLayout));
-
-    MFREE(inputAttribs);
-
-    MFREE(vertSrc);
-
-    destroyString(&vertPath);
-  }
-
-  {
-    String fragPath = {};
-    copyString(&fragPath, &basePath);
-    appendPathCStr(&fragPath, baseName);
-    appendCStr(&fragPath, ".fs.cso");
-
-    void *fragSrc;
-    int fragSize;
-
-    LOG("Opening fragment shader at %s", fragPath.buf);
-    readFile(&fragPath, &fragSrc, &fragSize);
-    HR_ASSERT(gDevice->CreatePixelShader(fragSrc, castI32U32(fragSize), NULL,
-                                         &program->frag));
-    MFREE(fragSrc);
-
-    destroyString(&fragPath);
-  }
+  MFREE(vertSrc);
+  destroyString(&vertPath);
 
   destroyString(&basePath);
 }
@@ -301,7 +257,7 @@ void loadGLTFModel(const char *path, Model *model) {
         break;
       }
 
-      HR_ASSERT(gDevice->CreateSamplerState(&desc, sampler));
+      createSampler(&desc, sampler);
     }
   }
 
