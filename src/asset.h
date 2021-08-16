@@ -8,6 +8,7 @@
 
 FORWARD_DECL(ShaderProgram);
 FORWARD_DECL(Model);
+FORWARD_DECL(GPUTexture2D);
 
 C_INTERFACE_BEGIN
 
@@ -22,7 +23,7 @@ void loadProgram(const char *baseName, ShaderProgram *program);
 void loadGLTFModel(const char *path, Model *model);
 
 void loadIBLTexture(const char *baseName, int *skyWidth, int *skyHeight,
-                    ID3D11Texture2D **skyTex, ID3D11Texture2D **irrTex,
+                    GPUTexture2D **skyTex, GPUTexture2D **irrTex,
                     ID3D11ShaderResourceView **skyTexView,
                     ID3D11ShaderResourceView **irrTexView);
 

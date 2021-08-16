@@ -18,16 +18,72 @@ static ID3D11Device *gDevice;
 static ID3D11DeviceContext *gContext;
 static IDXGISwapChain *gSwapChain;
 static ID3D11RenderTargetView *gSwapChainRTV;
-static ID3D11Texture2D *gSwapChainDepthStencilBuffer;
+static GPUTexture2D *gSwapChainDepthStencilBuffer;
 static ID3D11ShaderResourceView *gSwapChainDepthTextureView;
 static ID3D11DepthStencilView *gSwapChainDSV;
 
-static ID3D11Texture2D *gDefaultTexture;
+static GPUTexture2D *gDefaultTexture;
 static ID3D11ShaderResourceView *gDefaultTextureView;
 static ID3D11SamplerState *gDefaultSampler;
 
 static ID3D11DepthStencilState *gDefaultDepthStencilState;
 static ID3D11RasterizerState *gDefaultRasterizerState;
+
+static D3D11_USAGE toNativeUsage(GPUResourceUsage usage) {
+  return (D3D11_USAGE)usage;
+}
+
+static DXGI_FORMAT toNativeFormat(GPUResourceFormat format) {
+  return (DXGI_FORMAT)format;
+}
+
+static DXGI_RATIONAL queryRefreshRate(int ww, int wh,
+                                      GPUResourceFormat swapChainFormat) {
+  DXGI_RATIONAL refreshRate = {};
+
+  IDXGIFactory *factory;
+  HR_ASSERT(CreateDXGIFactory(IID_PPV_ARGS(&factory)));
+
+  IDXGIAdapter *adapter;
+  HR_ASSERT(factory->EnumAdapters(0, &adapter));
+
+  IDXGIOutput *adapterOutput;
+  HR_ASSERT(adapter->EnumOutputs(0, &adapterOutput));
+
+  UINT numDisplayModes;
+  HR_ASSERT(adapterOutput->GetDisplayModeList(toNativeFormat(swapChainFormat),
+                                              DXGI_ENUM_MODES_INTERLACED,
+                                              &numDisplayModes, NULL));
+
+  DXGI_MODE_DESC *displayModes =
+      MMALLOC_ARRAY_UNINITIALIZED(DXGI_MODE_DESC, castU32I32(numDisplayModes));
+
+  HR_ASSERT(adapterOutput->GetDisplayModeList(toNativeFormat(swapChainFormat),
+                                              DXGI_ENUM_MODES_INTERLACED,
+                                              &numDisplayModes, displayModes));
+
+  for (UINT i = 0; i < numDisplayModes; ++i) {
+    DXGI_MODE_DESC *mode = &displayModes[i];
+    if ((int)mode->Width == ww && (int)mode->Height == wh) {
+      refreshRate = mode->RefreshRate;
+    }
+  }
+
+  MFREE(displayModes);
+  COM_RELEASE(adapterOutput);
+  COM_RELEASE(adapter);
+  COM_RELEASE(factory);
+
+  return refreshRate;
+}
+
+HWND getWin32WindowHandle(SDL_Window *window) {
+  SDL_SysWMinfo wmInfo;
+  SDL_VERSION(&wmInfo.version)
+  SDL_GetWindowWMInfo(window, &wmInfo);
+  HWND hwnd = wmInfo.info.win.window;
+  return hwnd;
+}
 
 void initRenderer(void) {
   int windowWidth, windowHeight;
@@ -39,8 +95,8 @@ void initRenderer(void) {
               .Width = castI32U32(windowWidth),
               .Height = castI32U32(windowHeight),
               .RefreshRate = queryRefreshRate(windowWidth, windowHeight,
-                                              DXGI_FORMAT_R8G8B8A8_UNORM),
-              .Format = DXGI_FORMAT_R8G8B8A8_UNORM,
+                                              GPUResourceFormat_R8G8B8A8_UNORM),
+              .Format = toNativeFormat(GPUResourceFormat_R8G8B8A8_UNORM),
           },
       .SampleDesc =
           {
@@ -77,30 +133,32 @@ void initRenderer(void) {
   TextureDesc depthStencilTextureDesc = {
       .width = windowWidth,
       .height = windowHeight,
-      .format = DXGI_FORMAT_R32_TYPELESS,
-      .viewFormat = DXGI_FORMAT_R32_FLOAT,
-      .usage = D3D11_USAGE_DEFAULT,
-      .bindFlags = D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE,
+      .format = GPUResourceFormat_R32_TYPELESS,
+      .viewFormat = GPUResourceFormat_R32_FLOAT,
+      .usage = GPUResourceUsage_DEFAULT,
+      .bindFlags = GPUResourceBindBits_DEPTH_STENCIL |
+                   GPUResourceBindBits_SHADER_RESOURCE,
   };
   createTexture2D(&depthStencilTextureDesc, &gSwapChainDepthStencilBuffer,
                   &gSwapChainDepthTextureView);
 
   D3D11_DEPTH_STENCIL_VIEW_DESC depthStencilViewDesc = {
-      .Format = DXGI_FORMAT_D32_FLOAT,
+      .Format = toNativeFormat(GPUResourceFormat_D32_FLOAT),
       .ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D,
       .Flags = 0,
       .Texture2D = {.MipSlice = 0},
   };
   HR_ASSERT(gDevice->CreateDepthStencilView(
-      gSwapChainDepthStencilBuffer, &depthStencilViewDesc, &gSwapChainDSV));
+      (ID3D11Texture2D *)gSwapChainDepthStencilBuffer, &depthStencilViewDesc,
+      &gSwapChainDSV));
 
   TextureDesc defaultTextureDesc = {
       .width = 16,
       .height = 16,
       .bytesPerPixel = 4,
-      .format = DXGI_FORMAT_R8G8B8A8_UNORM,
-      .usage = D3D11_USAGE_IMMUTABLE,
-      .bindFlags = D3D11_BIND_SHADER_RESOURCE,
+      .format = GPUResourceFormat_R8G8B8A8_UNORM,
+      .usage = GPUResourceUsage_IMMUTABLE,
+      .bindFlags = GPUResourceBindBits_SHADER_RESOURCE,
   };
   defaultTextureDesc.initialData = MMALLOC_ARRAY(
       uint32_t, defaultTextureDesc.width * defaultTextureDesc.height);
@@ -197,52 +255,6 @@ void destroyRenderer(void) {
     COM_RELEASE(debug);
   }
 #endif
-}
-
-DXGI_RATIONAL queryRefreshRate(int ww, int wh, DXGI_FORMAT swapChainFormat) {
-  DXGI_RATIONAL refreshRate = {};
-
-  IDXGIFactory *factory;
-  HR_ASSERT(CreateDXGIFactory(IID_PPV_ARGS(&factory)));
-
-  IDXGIAdapter *adapter;
-  HR_ASSERT(factory->EnumAdapters(0, &adapter));
-
-  IDXGIOutput *adapterOutput;
-  HR_ASSERT(adapter->EnumOutputs(0, &adapterOutput));
-
-  UINT numDisplayModes;
-  HR_ASSERT(adapterOutput->GetDisplayModeList(
-      swapChainFormat, DXGI_ENUM_MODES_INTERLACED, &numDisplayModes, NULL));
-
-  DXGI_MODE_DESC *displayModes =
-      MMALLOC_ARRAY_UNINITIALIZED(DXGI_MODE_DESC, castU32I32(numDisplayModes));
-
-  HR_ASSERT(adapterOutput->GetDisplayModeList(swapChainFormat,
-                                              DXGI_ENUM_MODES_INTERLACED,
-                                              &numDisplayModes, displayModes));
-
-  for (UINT i = 0; i < numDisplayModes; ++i) {
-    DXGI_MODE_DESC *mode = &displayModes[i];
-    if ((int)mode->Width == ww && (int)mode->Height == wh) {
-      refreshRate = mode->RefreshRate;
-    }
-  }
-
-  MFREE(displayModes);
-  COM_RELEASE(adapterOutput);
-  COM_RELEASE(adapter);
-  COM_RELEASE(factory);
-
-  return refreshRate;
-}
-
-HWND getWin32WindowHandle(SDL_Window *window) {
-  SDL_SysWMinfo wmInfo;
-  SDL_VERSION(&wmInfo.version)
-  SDL_GetWindowWMInfo(window, &wmInfo);
-  HWND hwnd = wmInfo.info.win.window;
-  return hwnd;
 }
 
 void setViewport(float x, float y, float w, float h) {
@@ -361,7 +373,7 @@ void useProgram(const ShaderProgram *program) {
 void createBuffer(const BufferDesc *desc, ID3D11Buffer **buffer) {
   D3D11_BUFFER_DESC bufferDesc = {
       .ByteWidth = castI32U32(desc->size),
-      .Usage = desc->usage,
+      .Usage = toNativeUsage(desc->usage),
       .BindFlags = desc->bindFlags,
   };
 
@@ -384,20 +396,20 @@ void bindBuffers(int numBuffers, ID3D11Buffer **buffers) {
   gContext->PSSetConstantBuffers(0, castI32U32(numBuffers), buffers);
 }
 
-void createTexture2D(const TextureDesc *desc, ID3D11Texture2D **texture,
+void createTexture2D(const TextureDesc *desc, GPUTexture2D **texture,
                      ID3D11ShaderResourceView **textureView) {
   D3D11_TEXTURE2D_DESC textureDesc = {
       .Width = castI32U32(desc->width),
       .Height = castI32U32(desc->height),
       .MipLevels = 1,
       .ArraySize = 1,
-      .Format = desc->format,
+      .Format = toNativeFormat(desc->format),
       .SampleDesc =
           {
               .Count = 1,
               .Quality = 0,
           },
-      .Usage = desc->usage,
+      .Usage = toNativeUsage(desc->usage),
       .BindFlags = desc->bindFlags,
       .CPUAccessFlags = 0,
   };
@@ -408,13 +420,15 @@ void createTexture2D(const TextureDesc *desc, ID3D11Texture2D **texture,
     textureDesc.MipLevels =
         (uint32_t)floorf(log2f((float)MAX(desc->width, desc->height)));
     textureDesc.Usage = D3D11_USAGE_DEFAULT;
-    textureDesc.BindFlags |=
-        (D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE);
+    textureDesc.BindFlags |= (GPUResourceBindBits_RENDER_TARGET |
+                              GPUResourceBindBits_SHADER_RESOURCE);
     textureDesc.MiscFlags = D3D11_RESOURCE_MISC_GENERATE_MIPS;
 
-    HR_ASSERT(gDevice->CreateTexture2D(&textureDesc, NULL, texture));
+    HR_ASSERT(gDevice->CreateTexture2D(&textureDesc, NULL,
+                                       (ID3D11Texture2D **)texture));
     if (desc->initialData) {
-      gContext->UpdateSubresource(*texture, 0, 0, desc->initialData, pitch, 0);
+      gContext->UpdateSubresource((ID3D11Texture2D *)*texture, 0, 0,
+                                  desc->initialData, pitch, 0);
     }
   } else {
     if (desc->initialData) {
@@ -422,16 +436,18 @@ void createTexture2D(const TextureDesc *desc, ID3D11Texture2D **texture,
           .pSysMem = desc->initialData,
           .SysMemPitch = pitch,
       };
-      HR_ASSERT(gDevice->CreateTexture2D(&textureDesc, &initialData, texture));
+      HR_ASSERT(gDevice->CreateTexture2D(&textureDesc, &initialData,
+                                         (ID3D11Texture2D **)texture));
     } else {
-      HR_ASSERT(gDevice->CreateTexture2D(&textureDesc, NULL, texture));
+      HR_ASSERT(gDevice->CreateTexture2D(&textureDesc, NULL,
+                                         (ID3D11Texture2D **)texture));
     }
   }
 
   if (textureView) {
     if (desc->viewFormat) {
       D3D11_SHADER_RESOURCE_VIEW_DESC viewDesc = {
-          .Format = desc->viewFormat,
+          .Format = toNativeFormat(desc->viewFormat),
           .ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D,
           .Texture2D =
               {
@@ -439,10 +455,11 @@ void createTexture2D(const TextureDesc *desc, ID3D11Texture2D **texture,
                   .MipLevels = textureDesc.MipLevels,
               },
       };
-      HR_ASSERT(
-          gDevice->CreateShaderResourceView(*texture, &viewDesc, textureView));
+      HR_ASSERT(gDevice->CreateShaderResourceView((ID3D11Texture2D *)*texture,
+                                                  &viewDesc, textureView));
     } else {
-      HR_ASSERT(gDevice->CreateShaderResourceView(*texture, NULL, textureView));
+      HR_ASSERT(gDevice->CreateShaderResourceView((ID3D11Texture2D *)*texture,
+                                                  NULL, textureView));
     }
 
     if (desc->generateMipMaps) {
@@ -617,15 +634,15 @@ void generateHammersleySequence(int n, Float4 *values) {
   avg /= (float)n;
 }
 
-static ID3D11Texture2D *gPositionTexture;
+static GPUTexture2D *gPositionTexture;
 static ID3D11ShaderResourceView *gPositionView;
 static ID3D11RenderTargetView *gPositionRTV;
 
-static ID3D11Texture2D *gNormalTexture;
+static GPUTexture2D *gNormalTexture;
 static ID3D11ShaderResourceView *gNormalView;
 static ID3D11RenderTargetView *gNormalRTV;
 
-static ID3D11Texture2D *gAlbedoTexture;
+static GPUTexture2D *gAlbedoTexture;
 static ID3D11ShaderResourceView *gAlbedoView;
 static ID3D11RenderTargetView *gAlbedoRTV;
 
@@ -635,18 +652,21 @@ void createSSAOResources(int ww, int wh) {
   TextureDesc textureDesc = {
       .width = ww,
       .height = wh,
-      .format = DXGI_FORMAT_R16G16B16A16_FLOAT,
-      .usage = D3D11_USAGE_DEFAULT,
-      .bindFlags = D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE,
+      .format = GPUResourceFormat_R16G16B16A16_FLOAT,
+      .usage = GPUResourceUsage_DEFAULT,
+      .bindFlags = GPUResourceBindBits_RENDER_TARGET |
+                   GPUResourceBindBits_SHADER_RESOURCE,
   };
 
   createTexture2D(&textureDesc, &gPositionTexture, &gPositionView);
-  HR_ASSERT(
-      gDevice->CreateRenderTargetView(gPositionTexture, NULL, &gPositionRTV));
+  HR_ASSERT(gDevice->CreateRenderTargetView((ID3D11Texture2D *)gPositionTexture,
+                                            NULL, &gPositionRTV));
   createTexture2D(&textureDesc, &gNormalTexture, &gNormalView);
-  HR_ASSERT(gDevice->CreateRenderTargetView(gNormalTexture, NULL, &gNormalRTV));
+  HR_ASSERT(gDevice->CreateRenderTargetView((ID3D11Texture2D *)gNormalTexture,
+                                            NULL, &gNormalRTV));
   createTexture2D(&textureDesc, &gAlbedoTexture, &gAlbedoView);
-  HR_ASSERT(gDevice->CreateRenderTargetView(gAlbedoTexture, NULL, &gAlbedoRTV));
+  HR_ASSERT(gDevice->CreateRenderTargetView((ID3D11Texture2D *)gAlbedoTexture,
+                                            NULL, &gAlbedoRTV));
 
   loadProgram("ssao", &gSSAOProgram);
 

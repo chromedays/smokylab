@@ -154,7 +154,7 @@ typedef enum _GPUResourceBindBits {
   GPUResourceBindBits_DECODER = 0x200L,
   GPUResourceBindBits_VIDEO_ENCODER = 0x400L
 } GPUResourceBindBits;
-typedef uint32_t ResourceBindFlag;
+typedef uint32_t GPUResourceBindFlag;
 
 FORWARD_DECL(GPUDevice);
 FORWARD_DECL(GPUDeviceContext);
@@ -178,7 +178,7 @@ C_INTERFACE_BEGIN
 void initRenderer(void);
 void destroyRenderer(void);
 
-DXGI_RATIONAL queryRefreshRate(int ww, int wh, DXGI_FORMAT swapChainFormat);
+// DXGI_RATIONAL queryRefreshRate(int ww, int wh, DXGI_FORMAT swapChainFormat);
 HWND getWin32WindowHandle(SDL_Window *window);
 
 void setViewport(float x, float y, float w, float h);
@@ -208,8 +208,8 @@ typedef uint32_t VertexIndex;
 typedef struct _BufferDesc {
   int size;
   const void *initialData;
-  D3D11_USAGE usage;
-  UINT bindFlags;
+  GPUResourceUsage usage;
+  GPUResourceBindFlag bindFlags;
 } BufferDesc;
 
 void createBuffer(const BufferDesc *desc, ID3D11Buffer **buffer);
@@ -220,14 +220,14 @@ typedef struct _TextureDesc {
   int width;
   int height;
   int bytesPerPixel; // Source bytes per pixel
-  DXGI_FORMAT format;
-  DXGI_FORMAT viewFormat;
-  D3D11_USAGE usage;
-  UINT bindFlags;
+  GPUResourceFormat format;
+  GPUResourceFormat viewFormat;
+  GPUResourceUsage usage;
+  GPUResourceBindFlag bindFlags;
   bool generateMipMaps;
   void *initialData;
 } TextureDesc;
-void createTexture2D(const TextureDesc *desc, ID3D11Texture2D **texture,
+void createTexture2D(const TextureDesc *desc, GPUTexture2D **texture,
                      ID3D11ShaderResourceView **textureView);
 
 // TODO: Create custom sampler desc struct
@@ -318,7 +318,7 @@ typedef struct _Model {
   String name;
 
   int numTextures;
-  ID3D11Texture2D **textures;
+  GPUTexture2D **textures;
   ID3D11ShaderResourceView **textureViews;
 
   int numSamplers;

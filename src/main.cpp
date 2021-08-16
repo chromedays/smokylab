@@ -26,24 +26,24 @@ int main(UNUSED int argc, UNUSED char **argv) {
   ID3D11Buffer *viewUniformBuffer;
   BufferDesc viewUniformBufferDesc = {
       .size = sizeof(ViewUniforms),
-      .usage = D3D11_USAGE_DEFAULT,
-      .bindFlags = D3D11_BIND_CONSTANT_BUFFER,
+      .usage = GPUResourceUsage_DEFAULT,
+      .bindFlags = GPUResourceBindBits_CONSTANT_BUFFER,
   };
   createBuffer(&viewUniformBufferDesc, &viewUniformBuffer);
 
   ID3D11Buffer *drawUniformBuffer;
   BufferDesc drawUniformBufferDesc = {
       .size = sizeof(DrawUniforms),
-      .usage = D3D11_USAGE_DEFAULT,
-      .bindFlags = D3D11_BIND_CONSTANT_BUFFER,
+      .usage = GPUResourceUsage_DEFAULT,
+      .bindFlags = GPUResourceBindBits_CONSTANT_BUFFER,
   };
   createBuffer(&drawUniformBufferDesc, &drawUniformBuffer);
 
   ID3D11Buffer *materialUniformBuffer;
   BufferDesc materialUniformBufferDesc = {
       .size = sizeof(MaterialUniforms),
-      .usage = D3D11_USAGE_DEFAULT,
-      .bindFlags = D3D11_BIND_CONSTANT_BUFFER,
+      .usage = GPUResourceUsage_DEFAULT,
+      .bindFlags = GPUResourceBindBits_CONSTANT_BUFFER,
   };
   createBuffer(&materialUniformBufferDesc, &materialUniformBuffer);
 

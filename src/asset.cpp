@@ -136,7 +136,7 @@ void loadGLTFModel(const char *path, Model *model) {
 
   model->numTextures = (int)gltf->textures_count;
   if (model->numTextures > 0) {
-    model->textures = MMALLOC_ARRAY(ID3D11Texture2D *, model->numTextures);
+    model->textures = MMALLOC_ARRAY(GPUTexture2D *, model->numTextures);
     model->textureViews =
         MMALLOC_ARRAY(ID3D11ShaderResourceView *, model->numTextures);
 
@@ -165,9 +165,10 @@ void loadGLTFModel(const char *path, Model *model) {
           .width = w,
           .height = h,
           .bytesPerPixel = 4,
-          .format = DXGI_FORMAT_R8G8B8A8_UNORM,
-          .usage = D3D11_USAGE_IMMUTABLE,
-          .bindFlags = D3D11_BIND_SHADER_RESOURCE,
+          .format = GPUResourceFormat_R8G8B8A8_UNORM,
+          .usage = GPUResourceUsage_IMMUTABLE,
+          .bindFlags =
+              (GPUResourceBindFlag){GPUResourceBindBits_SHADER_RESOURCE},
           .generateMipMaps = true,
           .initialData = data,
       };
@@ -462,15 +463,15 @@ void loadGLTFModel(const char *path, Model *model) {
   BufferDesc bufferDesc = {
       .size = numVertices * castUsizeI32(sizeof(Vertex)),
       .initialData = model->vertexBase,
-      .usage = D3D11_USAGE_IMMUTABLE,
-      .bindFlags = D3D11_BIND_VERTEX_BUFFER,
+      .usage = GPUResourceUsage_IMMUTABLE,
+      .bindFlags = GPUResourceBindBits_VERTEX_BUFFER,
   };
   createBuffer(&bufferDesc, &model->gpuVertexBuffer);
   bufferDesc = {
       .size = numIndices * castUsizeI32(sizeof(VertexIndex)),
       .initialData = model->indexBase,
-      .usage = D3D11_USAGE_IMMUTABLE,
-      .bindFlags = D3D11_BIND_INDEX_BUFFER,
+      .usage = GPUResourceUsage_IMMUTABLE,
+      .bindFlags = GPUResourceBindBits_INDEX_BUFFER,
   };
   createBuffer(&bufferDesc, &model->gpuIndexBuffer);
 
@@ -544,7 +545,7 @@ void loadGLTFModel(const char *path, Model *model) {
 }
 
 void loadIBLTexture(const char *baseName, int *skyWidth, int *skyHeight,
-                    ID3D11Texture2D **skyTex, ID3D11Texture2D **irrTex,
+                    GPUTexture2D **skyTex, GPUTexture2D **irrTex,
                     ID3D11ShaderResourceView **skyTexView,
                     ID3D11ShaderResourceView **irrTexView) {
   String basePath = {};
@@ -563,9 +564,9 @@ void loadIBLTexture(const char *baseName, int *skyWidth, int *skyHeight,
       .width = w,
       .height = h,
       .bytesPerPixel = 16,
-      .format = DXGI_FORMAT_R32G32B32A32_FLOAT,
-      .usage = D3D11_USAGE_IMMUTABLE,
-      .bindFlags = D3D11_BIND_SHADER_RESOURCE,
+      .format = GPUResourceFormat_R32G32B32A32_FLOAT,
+      .usage = GPUResourceUsage_IMMUTABLE,
+      .bindFlags = GPUResourceBindBits_SHADER_RESOURCE,
       .generateMipMaps = true,
       .initialData = pixels,
   };
@@ -581,9 +582,9 @@ void loadIBLTexture(const char *baseName, int *skyWidth, int *skyHeight,
       .width = w,
       .height = h,
       .bytesPerPixel = 16,
-      .format = DXGI_FORMAT_R32G32B32A32_FLOAT,
-      .usage = D3D11_USAGE_IMMUTABLE,
-      .bindFlags = D3D11_BIND_SHADER_RESOURCE,
+      .format = GPUResourceFormat_R32G32B32A32_FLOAT,
+      .usage = GPUResourceUsage_IMMUTABLE,
+      .bindFlags = GPUResourceBindBits_SHADER_RESOURCE,
       .initialData = pixels,
   };
   createTexture2D(&irrTexDesc, irrTex, irrTexView);
