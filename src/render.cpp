@@ -274,7 +274,7 @@ void createProgram(ShaderProgram *program, int vertSrcSize, void *vertSrc,
                    int fragSrcSize, void *fragSrc) {
 
   HR_ASSERT(gDevice->CreateVertexShader(vertSrc, castI32U32(vertSrcSize), NULL,
-                                        &program->vert));
+                                        (ID3D11VertexShader **)&program->vert));
 
   ID3D11ShaderReflection *refl;
   HR_ASSERT(D3DReflect(vertSrc, castI32U32(vertSrcSize), IID_PPV_ARGS(&refl)));
@@ -336,14 +336,14 @@ void createProgram(ShaderProgram *program, int vertSrcSize, void *vertSrc,
     }
   }
 
-  HR_ASSERT(gDevice->CreateInputLayout(inputAttribs, shaderDesc.InputParameters,
-                                       vertSrc, castI32U32(vertSrcSize),
-                                       &program->inputLayout));
+  HR_ASSERT(gDevice->CreateInputLayout(
+      inputAttribs, shaderDesc.InputParameters, vertSrc,
+      castI32U32(vertSrcSize), (ID3D11InputLayout **)&program->inputLayout));
 
   MFREE(inputAttribs);
 
   HR_ASSERT(gDevice->CreatePixelShader(fragSrc, castI32U32(fragSrcSize), NULL,
-                                       &program->frag));
+                                       (ID3D11PixelShader **)&program->frag));
 }
 void destroyProgram(ShaderProgram *program) {
   COM_RELEASE(program->frag);
@@ -353,9 +353,9 @@ void destroyProgram(ShaderProgram *program) {
 }
 
 void useProgram(const ShaderProgram *program) {
-  gContext->IASetInputLayout(program->inputLayout);
-  gContext->VSSetShader(program->vert, NULL, 0);
-  gContext->PSSetShader(program->frag, NULL, 0);
+  gContext->IASetInputLayout((ID3D11InputLayout *)program->inputLayout);
+  gContext->VSSetShader((ID3D11VertexShader *)program->vert, NULL, 0);
+  gContext->PSSetShader((ID3D11PixelShader *)program->frag, NULL, 0);
 }
 
 void createBuffer(const BufferDesc *desc, ID3D11Buffer **buffer) {

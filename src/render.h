@@ -164,6 +164,7 @@ FORWARD_DECL(GPUFragmentShader);
 FORWARD_DECL(GPUVertexLayout);
 FORWARD_DECL(GPUTextureView);
 FORWARD_DECL(GPUBuffer);
+FORWARD_DECL(GPUSampler);
 
 typedef struct _Renderer {
   GPUDevice *device;
@@ -185,9 +186,9 @@ void setDefaultRenderStates(Float4 clearColor);
 void swapBuffers(void);
 
 typedef struct _ShaderProgram {
-  ID3D11VertexShader *vert;
-  ID3D11InputLayout *inputLayout;
-  ID3D11PixelShader *frag;
+  GPUVertexShader *vert;
+  GPUVertexLayout *inputLayout;
+  GPUFragmentShader *frag;
 } ShaderProgram;
 
 void createProgram(ShaderProgram *program, int vertSrcSize, void *vertSrc,
@@ -355,6 +356,7 @@ void renderModel(const Model *model, ID3D11Buffer *drawUniformBuffer,
 bool processKeyboardEvent(const SDL_Event *event, SDL_Keycode keycode,
                           bool keyDown);
 
+#if 0
 void generateHammersleySequence(int n, Float4 *values);
 
 extern ID3D11Texture2D *gPositionTexture;
@@ -375,5 +377,6 @@ extern ShaderProgram gSSAOProgram;
 
 void createSSAOResources(int ww, int wh);
 void destroySSAOResources();
+#endif
 
 C_INTERFACE_END

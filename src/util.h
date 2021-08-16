@@ -64,7 +64,7 @@
 #define COM_RELEASE(com)                                                       \
   do {                                                                         \
     if (com) {                                                                 \
-      com->Release();                                                          \
+      ((IUnknown *)(com))->Release();                                          \
       com = NULL;                                                              \
     }                                                                          \
   } while (0)
@@ -72,7 +72,7 @@
 #define COM_RELEASE(com)                                                       \
   do {                                                                         \
     if (com) {                                                                 \
-      com->lpVtbl->Release(com);                                               \
+      ((IUnknown *)(com))->lpVtbl->Release(com);                               \
       com = NULL;                                                              \
     }                                                                          \
   } while (0)

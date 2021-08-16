@@ -119,7 +119,7 @@ int main(UNUSED int argc, UNUSED char **argv) {
       // .skySize = {skyWidth, skyHeight},
       .exposureNearFar = {1, nearZ, gui.depthVisualizedRangeFar},
   };
-  generateHammersleySequence(NUM_SAMPLES, viewUniforms.randomPoints);
+  // generateHammersleySequence(NUM_SAMPLES, viewUniforms.randomPoints);
 
   LOG("Entering main loop.");
 
@@ -242,7 +242,7 @@ int main(UNUSED int argc, UNUSED char **argv) {
 
   destroyGUI();
 
-  destroySSAOResources();
+  // destroySSAOResources();
 
   for (int i = 0; i < numModels; ++i) {
     destroyModel(models[i]);
