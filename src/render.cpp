@@ -19,11 +19,11 @@ static ID3D11DeviceContext *gContext;
 static IDXGISwapChain *gSwapChain;
 static ID3D11RenderTargetView *gSwapChainRTV;
 static GPUTexture2D *gSwapChainDepthStencilBuffer;
-static ID3D11ShaderResourceView *gSwapChainDepthTextureView;
+static GPUTextureView *gSwapChainDepthTextureView;
 static ID3D11DepthStencilView *gSwapChainDSV;
 
 static GPUTexture2D *gDefaultTexture;
-static ID3D11ShaderResourceView *gDefaultTextureView;
+static GPUTextureView *gDefaultTextureView;
 static ID3D11SamplerState *gDefaultSampler;
 
 static ID3D11DepthStencilState *gDefaultDepthStencilState;
@@ -397,7 +397,7 @@ void bindBuffers(int numBuffers, ID3D11Buffer **buffers) {
 }
 
 void createTexture2D(const TextureDesc *desc, GPUTexture2D **texture,
-                     ID3D11ShaderResourceView **textureView) {
+                     GPUTextureView **textureView) {
   D3D11_TEXTURE2D_DESC textureDesc = {
       .Width = castI32U32(desc->width),
       .Height = castI32U32(desc->height),
@@ -455,22 +455,23 @@ void createTexture2D(const TextureDesc *desc, GPUTexture2D **texture,
                   .MipLevels = textureDesc.MipLevels,
               },
       };
-      HR_ASSERT(gDevice->CreateShaderResourceView((ID3D11Texture2D *)*texture,
-                                                  &viewDesc, textureView));
+      HR_ASSERT(gDevice->CreateShaderResourceView(
+          (ID3D11Texture2D *)*texture, &viewDesc,
+          (ID3D11ShaderResourceView **)textureView));
     } else {
-      HR_ASSERT(gDevice->CreateShaderResourceView((ID3D11Texture2D *)*texture,
-                                                  NULL, textureView));
+      HR_ASSERT(gDevice->CreateShaderResourceView(
+          (ID3D11Texture2D *)*texture, NULL,
+          (ID3D11ShaderResourceView **)textureView));
     }
 
     if (desc->generateMipMaps) {
-      gContext->GenerateMips(*textureView);
+      gContext->GenerateMips((ID3D11ShaderResourceView *)*textureView);
     }
   }
 }
 
-void createSampler(const D3D11_SAMPLER_DESC *desc,
-                   ID3D11SamplerState **sampler) {
-  HR_ASSERT(gDevice->CreateSamplerState(desc, sampler));
+void createSampler(const D3D11_SAMPLER_DESC *desc, GPUSampler **sampler) {
+  HR_ASSERT(gDevice->CreateSamplerState(desc, (ID3D11SamplerState **)sampler));
 }
 
 void destroyModel(Model *model) {
@@ -526,27 +527,33 @@ static void renderMesh(const Model *model, const Mesh *mesh,
         .metallicRoughnessFactor = {material->metallicFactor,
                                     material->roughnessFactor}};
 
-    ID3D11ShaderResourceView *baseColorTextureView = gDefaultTextureView;
+    ID3D11ShaderResourceView *baseColorTextureView =
+        (ID3D11ShaderResourceView *)gDefaultTextureView;
     if (material->baseColorTexture >= 0) {
-      baseColorTextureView = model->textureViews[material->baseColorTexture];
+      baseColorTextureView =
+          (ID3D11ShaderResourceView *)
+              model->textureViews[material->baseColorTexture];
     }
 
     ID3D11SamplerState *baseColorSampler = gDefaultSampler;
     if (material->baseColorSampler >= 0) {
-      baseColorSampler = model->samplers[material->baseColorSampler];
+      baseColorSampler =
+          (ID3D11SamplerState *)model->samplers[material->baseColorSampler];
     }
 
     ID3D11ShaderResourceView *metallicRoughnessTextureView =
-        gDefaultTextureView;
+        (ID3D11ShaderResourceView *)gDefaultTextureView;
     if (material->metallicRoughnessTexture >= 0) {
       metallicRoughnessTextureView =
-          model->textureViews[material->metallicRoughnessTexture];
+          (ID3D11ShaderResourceView *)
+              model->textureViews[material->metallicRoughnessTexture];
     }
 
     ID3D11SamplerState *metallicRoughnessSampler = gDefaultSampler;
     if (material->metallicRoughnessSampler >= 0) {
       metallicRoughnessSampler =
-          model->samplers[material->metallicRoughnessSampler];
+          (ID3D11SamplerState *)
+              model->samplers[material->metallicRoughnessSampler];
     }
 
     gContext->UpdateSubresource(materialUniformBuffer, 0, NULL,
@@ -635,15 +642,15 @@ void generateHammersleySequence(int n, Float4 *values) {
 }
 
 static GPUTexture2D *gPositionTexture;
-static ID3D11ShaderResourceView *gPositionView;
+static GPUTextureView *gPositionView;
 static ID3D11RenderTargetView *gPositionRTV;
 
 static GPUTexture2D *gNormalTexture;
-static ID3D11ShaderResourceView *gNormalView;
+static GPUTextureView *gNormalView;
 static ID3D11RenderTargetView *gNormalRTV;
 
 static GPUTexture2D *gAlbedoTexture;
-static ID3D11ShaderResourceView *gAlbedoView;
+static GPUTextureView *gAlbedoView;
 static ID3D11RenderTargetView *gAlbedoRTV;
 
 static ShaderProgram gSSAOProgram;

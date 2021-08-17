@@ -137,8 +137,7 @@ void loadGLTFModel(const char *path, Model *model) {
   model->numTextures = (int)gltf->textures_count;
   if (model->numTextures > 0) {
     model->textures = MMALLOC_ARRAY(GPUTexture2D *, model->numTextures);
-    model->textureViews =
-        MMALLOC_ARRAY(ID3D11ShaderResourceView *, model->numTextures);
+    model->textureViews = MMALLOC_ARRAY(GPUTextureView *, model->numTextures);
 
     String imageFilePath = {};
     for (cgltf_size textureIndex = 0; textureIndex < gltf->images_count;
@@ -191,12 +190,12 @@ void loadGLTFModel(const char *path, Model *model) {
 #define GLTF_REPEAT 10497
   model->numSamplers = (int)gltf->samplers_count;
   if (model->numSamplers > 0) {
-    model->samplers = MMALLOC_ARRAY(ID3D11SamplerState *, model->numSamplers);
+    model->samplers = MMALLOC_ARRAY(GPUSampler *, model->numSamplers);
 
     for (cgltf_size samplerIndex = 0; samplerIndex < gltf->samplers_count;
          ++samplerIndex) {
       cgltf_sampler *gltfSampler = &gltf->samplers[samplerIndex];
-      ID3D11SamplerState **sampler = &model->samplers[samplerIndex];
+      GPUSampler **sampler = &model->samplers[samplerIndex];
 
       D3D11_SAMPLER_DESC desc = {
           .AddressW = D3D11_TEXTURE_ADDRESS_WRAP,
@@ -546,8 +545,7 @@ void loadGLTFModel(const char *path, Model *model) {
 
 void loadIBLTexture(const char *baseName, int *skyWidth, int *skyHeight,
                     GPUTexture2D **skyTex, GPUTexture2D **irrTex,
-                    ID3D11ShaderResourceView **skyTexView,
-                    ID3D11ShaderResourceView **irrTexView) {
+                    GPUTextureView **skyTexView, GPUTextureView **irrTexView) {
   String basePath = {};
   copyAssetRootPath(&basePath);
   appendPathCStr(&basePath, baseName);

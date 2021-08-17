@@ -228,11 +228,10 @@ typedef struct _TextureDesc {
   void *initialData;
 } TextureDesc;
 void createTexture2D(const TextureDesc *desc, GPUTexture2D **texture,
-                     ID3D11ShaderResourceView **textureView);
+                     GPUTextureView **textureView);
 
 // TODO: Create custom sampler desc struct
-void createSampler(const D3D11_SAMPLER_DESC *desc,
-                   ID3D11SamplerState **sampler);
+void createSampler(const D3D11_SAMPLER_DESC *desc, GPUSampler **sampler);
 
 #define NUM_SAMPLES 40
 typedef struct _ViewUniforms {
@@ -319,10 +318,10 @@ typedef struct _Model {
 
   int numTextures;
   GPUTexture2D **textures;
-  ID3D11ShaderResourceView **textureViews;
+  GPUTextureView **textureViews;
 
   int numSamplers;
-  ID3D11SamplerState **samplers;
+  GPUSampler **samplers;
 
   int numMaterials;
   Material *materials;
