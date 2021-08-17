@@ -5,10 +5,7 @@
 #pragma clang diagnostic ignored "-Weverything"
 #include <cgltf.h>
 #include <stb_image.h>
-#include <d3d11shader.h>
-#include <d3d11_1.h>
-#include <dxgidebug.h>
-#include <d3dcompiler.h>
+#include <Windows.h>
 #pragma clang diagnostic pop
 
 static String gAssetRootPath;
@@ -197,63 +194,60 @@ void loadGLTFModel(const char *path, Model *model) {
       cgltf_sampler *gltfSampler = &gltf->samplers[samplerIndex];
       GPUSampler **sampler = &model->samplers[samplerIndex];
 
-      D3D11_SAMPLER_DESC desc = {
-          .AddressW = D3D11_TEXTURE_ADDRESS_WRAP,
-          .MaxLOD = D3D11_FLOAT32_MAX,
-      };
+      SamplerDesc desc = {};
 
       if (gltfSampler->mag_filter == GLTF_NEAREST) {
         if (gltfSampler->min_filter == GLTF_NEAREST) {
-          desc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
+          desc.filter = GPUFilter_MIN_MAG_MIP_POINT;
         } else if (gltfSampler->min_filter == GLTF_LINEAR) {
-          desc.Filter = D3D11_FILTER_MIN_LINEAR_MAG_MIP_POINT;
+          desc.filter = GPUFilter_MIN_LINEAR_MAG_MIP_POINT;
         } else if (gltfSampler->min_filter == GLTF_NEAREST_MIPMAP_NEAREST) {
-          desc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
+          desc.filter = GPUFilter_MIN_MAG_MIP_POINT;
         } else if (gltfSampler->min_filter == GLTF_LINEAR_MIPMAP_NEAREST) {
-          desc.Filter = D3D11_FILTER_MIN_LINEAR_MAG_MIP_POINT;
+          desc.filter = GPUFilter_MIN_LINEAR_MAG_MIP_POINT;
         } else if (gltfSampler->min_filter == GLTF_LINEAR_MIPMAP_LINEAR) {
-          desc.Filter = D3D11_FILTER_MIN_LINEAR_MAG_POINT_MIP_LINEAR;
+          desc.filter = GPUFilter_MIN_LINEAR_MAG_POINT_MIP_LINEAR;
         } else { // NEAREST_MIPMAP_LINEAR
-          desc.Filter = D3D11_FILTER_MIN_MAG_POINT_MIP_LINEAR;
+          desc.filter = GPUFilter_MIN_MAG_POINT_MIP_LINEAR;
         }
       } else { // LINEAR
         if (gltfSampler->min_filter == GLTF_NEAREST) {
-          desc.Filter = D3D11_FILTER_MIN_POINT_MAG_LINEAR_MIP_POINT;
+          desc.filter = GPUFilter_MIN_POINT_MAG_LINEAR_MIP_POINT;
         } else if (gltfSampler->min_filter == GLTF_LINEAR) {
-          desc.Filter = D3D11_FILTER_MIN_MAG_LINEAR_MIP_POINT;
+          desc.filter = GPUFilter_MIN_MAG_LINEAR_MIP_POINT;
         } else if (gltfSampler->min_filter == GLTF_NEAREST_MIPMAP_NEAREST) {
-          desc.Filter = D3D11_FILTER_MIN_POINT_MAG_LINEAR_MIP_POINT;
+          desc.filter = GPUFilter_MIN_POINT_MAG_LINEAR_MIP_POINT;
         } else if (gltfSampler->min_filter == GLTF_LINEAR_MIPMAP_NEAREST) {
-          desc.Filter = D3D11_FILTER_MIN_MAG_LINEAR_MIP_POINT;
+          desc.filter = GPUFilter_MIN_MAG_LINEAR_MIP_POINT;
         } else if (gltfSampler->min_filter == GLTF_LINEAR_MIPMAP_LINEAR) {
-          desc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+          desc.filter = GPUFilter_MIN_MAG_MIP_LINEAR;
         } else { // NEAREST_MIPMAP_LINEAR
-          desc.Filter = D3D11_FILTER_MIN_POINT_MAG_MIP_LINEAR;
+          desc.filter = GPUFilter_MIN_POINT_MAG_MIP_LINEAR;
         }
       }
 
       switch (gltfSampler->wrap_s) {
       case GLTF_CLAMP_TO_EDGE:
-        desc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
+        desc.addressMode.u = GPUTextureAddressMode_CLAMP;
         break;
       case GLTF_MIRRORED_REPEAT:
-        desc.AddressU = D3D11_TEXTURE_ADDRESS_MIRROR;
+        desc.addressMode.u = GPUTextureAddressMode_MIRROR;
         break;
       case GLTF_REPEAT:
       default:
-        desc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
+        desc.addressMode.u = GPUTextureAddressMode_WRAP;
         break;
       }
       switch (gltfSampler->wrap_t) {
       case GLTF_CLAMP_TO_EDGE:
-        desc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
+        desc.addressMode.v = GPUTextureAddressMode_CLAMP;
         break;
       case GLTF_MIRRORED_REPEAT:
-        desc.AddressV = D3D11_TEXTURE_ADDRESS_MIRROR;
+        desc.addressMode.v = GPUTextureAddressMode_MIRROR;
         break;
       case GLTF_REPEAT:
       default:
-        desc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
+        desc.addressMode.v = GPUTextureAddressMode_WRAP;
         break;
       }
 

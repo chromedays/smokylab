@@ -3,7 +3,6 @@
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Weverything"
 #include <SDL2/SDL.h>
-#include <d3d11_1.h>
 #pragma clang diagnostic pop
 
 FORWARD_DECL(Model);

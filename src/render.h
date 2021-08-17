@@ -5,9 +5,6 @@
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Weverything"
 #include <SDL2/SDL.h>
-#include <d3d11_1.h>
-#include <dxgidebug.h>
-#include <d3dcompiler.h>
 #pragma clang diagnostic pop
 
 typedef enum _GPUResourceUsage {
@@ -179,7 +176,7 @@ void initRenderer(void);
 void destroyRenderer(void);
 
 // DXGI_RATIONAL queryRefreshRate(int ww, int wh, DXGI_FORMAT swapChainFormat);
-HWND getWin32WindowHandle(SDL_Window *window);
+// HWND getWin32WindowHandle(SDL_Window *window);
 
 void setViewport(float x, float y, float w, float h);
 void setDefaultRenderStates(Float4 clearColor);
@@ -212,9 +209,9 @@ typedef struct _BufferDesc {
   GPUResourceBindFlag bindFlags;
 } BufferDesc;
 
-void createBuffer(const BufferDesc *desc, ID3D11Buffer **buffer);
-void updateBufferData(ID3D11Buffer *buffer, void *data);
-void bindBuffers(int numBuffers, ID3D11Buffer **buffers);
+void createBuffer(const BufferDesc *desc, GPUBuffer **buffer);
+void updateBufferData(GPUBuffer *buffer, void *data);
+void bindBuffers(int numBuffers, GPUBuffer **buffers);
 
 typedef struct _TextureDesc {
   int width;
@@ -230,8 +227,63 @@ typedef struct _TextureDesc {
 void createTexture2D(const TextureDesc *desc, GPUTexture2D **texture,
                      GPUTextureView **textureView);
 
+typedef enum _GPUFilter {
+  GPUFilter_MIN_MAG_MIP_POINT = 0,
+  GPUFilter_MIN_MAG_POINT_MIP_LINEAR = 0x1,
+  GPUFilter_MIN_POINT_MAG_LINEAR_MIP_POINT = 0x4,
+  GPUFilter_MIN_POINT_MAG_MIP_LINEAR = 0x5,
+  GPUFilter_MIN_LINEAR_MAG_MIP_POINT = 0x10,
+  GPUFilter_MIN_LINEAR_MAG_POINT_MIP_LINEAR = 0x11,
+  GPUFilter_MIN_MAG_LINEAR_MIP_POINT = 0x14,
+  GPUFilter_MIN_MAG_MIP_LINEAR = 0x15,
+  GPUFilter_ANISOTROPIC = 0x55,
+  GPUFilter_COMPARISON_MIN_MAG_MIP_POINT = 0x80,
+  GPUFilter_COMPARISON_MIN_MAG_POINT_MIP_LINEAR = 0x81,
+  GPUFilter_COMPARISON_MIN_POINT_MAG_LINEAR_MIP_POINT = 0x84,
+  GPUFilter_COMPARISON_MIN_POINT_MAG_MIP_LINEAR = 0x85,
+  GPUFilter_COMPARISON_MIN_LINEAR_MAG_MIP_POINT = 0x90,
+  GPUFilter_COMPARISON_MIN_LINEAR_MAG_POINT_MIP_LINEAR = 0x91,
+  GPUFilter_COMPARISON_MIN_MAG_LINEAR_MIP_POINT = 0x94,
+  GPUFilter_COMPARISON_MIN_MAG_MIP_LINEAR = 0x95,
+  GPUFilter_COMPARISON_ANISOTROPIC = 0xd5,
+  GPUFilter_MINIMUM_MIN_MAG_MIP_POINT = 0x100,
+  GPUFilter_MINIMUM_MIN_MAG_POINT_MIP_LINEAR = 0x101,
+  GPUFilter_MINIMUM_MIN_POINT_MAG_LINEAR_MIP_POINT = 0x104,
+  GPUFilter_MINIMUM_MIN_POINT_MAG_MIP_LINEAR = 0x105,
+  GPUFilter_MINIMUM_MIN_LINEAR_MAG_MIP_POINT = 0x110,
+  GPUFilter_MINIMUM_MIN_LINEAR_MAG_POINT_MIP_LINEAR = 0x111,
+  GPUFilter_MINIMUM_MIN_MAG_LINEAR_MIP_POINT = 0x114,
+  GPUFilter_MINIMUM_MIN_MAG_MIP_LINEAR = 0x115,
+  GPUFilter_MINIMUM_ANISOTROPIC = 0x155,
+  GPUFilter_MAXIMUM_MIN_MAG_MIP_POINT = 0x180,
+  GPUFilter_MAXIMUM_MIN_MAG_POINT_MIP_LINEAR = 0x181,
+  GPUFilter_MAXIMUM_MIN_POINT_MAG_LINEAR_MIP_POINT = 0x184,
+  GPUFilter_MAXIMUM_MIN_POINT_MAG_MIP_LINEAR = 0x185,
+  GPUFilter_MAXIMUM_MIN_LINEAR_MAG_MIP_POINT = 0x190,
+  GPUFilter_MAXIMUM_MIN_LINEAR_MAG_POINT_MIP_LINEAR = 0x191,
+  GPUFilter_MAXIMUM_MIN_MAG_LINEAR_MIP_POINT = 0x194,
+  GPUFilter_MAXIMUM_MIN_MAG_MIP_LINEAR = 0x195,
+  GPUFilter_MAXIMUM_ANISOTROPIC = 0x1d5
+} GPUFilter;
+
+typedef enum _GPUTextureAddressMode {
+  GPUTextureAddressMode_WRAP = 1,
+  GPUTextureAddressMode_MIRROR = 2,
+  GPUTextureAddressMode_CLAMP = 3,
+  GPUTextureAddressMode_BORDER = 4,
+  GPUTextureAddressMode_MIRROR_ONCE = 5
+} GPUTextureAddressMode;
+
+typedef struct _SamplerDesc {
+  GPUFilter filter;
+  struct {
+    GPUTextureAddressMode u;
+    GPUTextureAddressMode v;
+  } addressMode;
+} SamplerDesc;
+
 // TODO: Create custom sampler desc struct
-void createSampler(const D3D11_SAMPLER_DESC *desc, GPUSampler **sampler);
+void createSampler(const SamplerDesc *desc, GPUSampler **sampler);
 
 #define NUM_SAMPLES 40
 typedef struct _ViewUniforms {
@@ -344,13 +396,13 @@ typedef struct _Model {
   int numIndices;
   VertexIndex *indexBase;
 
-  ID3D11Buffer *gpuVertexBuffer;
-  ID3D11Buffer *gpuIndexBuffer;
+  GPUBuffer *gpuVertexBuffer;
+  GPUBuffer *gpuIndexBuffer;
 } Model;
 
 void destroyModel(Model *model);
-void renderModel(const Model *model, ID3D11Buffer *drawUniformBuffer,
-                 ID3D11Buffer *materialUniformBuffer);
+void renderModel(const Model *model, GPUBuffer *drawUniformBuffer,
+                 GPUBuffer *materialUniformBuffer);
 
 bool processKeyboardEvent(const SDL_Event *event, SDL_Keycode keycode,
                           bool keyDown);

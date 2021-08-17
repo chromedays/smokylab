@@ -9,6 +9,9 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_syswm.h>
 #include <d3d11shader.h>
+#include <d3d11_1.h>
+#include <dxgidebug.h>
+#include <d3dcompiler.h>
 #pragma clang diagnostic pop
 #include <random>
 
@@ -35,6 +38,15 @@ static D3D11_USAGE toNativeUsage(GPUResourceUsage usage) {
 
 static DXGI_FORMAT toNativeFormat(GPUResourceFormat format) {
   return (DXGI_FORMAT)format;
+}
+
+static D3D11_FILTER toNativeFilter(GPUFilter filter) {
+  return (D3D11_FILTER)filter;
+}
+
+static D3D11_TEXTURE_ADDRESS_MODE
+toNativeTextureAddressMode(GPUTextureAddressMode mode) {
+  return (D3D11_TEXTURE_ADDRESS_MODE)mode;
 }
 
 static DXGI_RATIONAL queryRefreshRate(int ww, int wh,
@@ -77,7 +89,7 @@ static DXGI_RATIONAL queryRefreshRate(int ww, int wh,
   return refreshRate;
 }
 
-HWND getWin32WindowHandle(SDL_Window *window) {
+static HWND getWin32WindowHandle(SDL_Window *window) {
   SDL_SysWMinfo wmInfo;
   SDL_VERSION(&wmInfo.version)
   SDL_GetWindowWMInfo(window, &wmInfo);
@@ -370,7 +382,7 @@ void useProgram(const ShaderProgram *program) {
   gContext->PSSetShader((ID3D11PixelShader *)program->frag, NULL, 0);
 }
 
-void createBuffer(const BufferDesc *desc, ID3D11Buffer **buffer) {
+void createBuffer(const BufferDesc *desc, GPUBuffer **buffer) {
   D3D11_BUFFER_DESC bufferDesc = {
       .ByteWidth = castI32U32(desc->size),
       .Usage = toNativeUsage(desc->usage),
@@ -381,19 +393,23 @@ void createBuffer(const BufferDesc *desc, ID3D11Buffer **buffer) {
     D3D11_SUBRESOURCE_DATA initialData = {
         .pSysMem = desc->initialData,
     };
-    HR_ASSERT(gDevice->CreateBuffer(&bufferDesc, &initialData, buffer));
+    HR_ASSERT(gDevice->CreateBuffer(&bufferDesc, &initialData,
+                                    (ID3D11Buffer **)buffer));
   } else {
-    HR_ASSERT(gDevice->CreateBuffer(&bufferDesc, NULL, buffer));
+    HR_ASSERT(
+        gDevice->CreateBuffer(&bufferDesc, NULL, (ID3D11Buffer **)buffer));
   }
 }
 
-void updateBufferData(ID3D11Buffer *buffer, void *data) {
-  gContext->UpdateSubresource(buffer, 0, NULL, data, 0, 0);
+void updateBufferData(GPUBuffer *buffer, void *data) {
+  gContext->UpdateSubresource((ID3D11Buffer *)buffer, 0, NULL, data, 0, 0);
 }
 
-void bindBuffers(int numBuffers, ID3D11Buffer **buffers) {
-  gContext->VSSetConstantBuffers(0, castI32U32(numBuffers), buffers);
-  gContext->PSSetConstantBuffers(0, castI32U32(numBuffers), buffers);
+void bindBuffers(int numBuffers, GPUBuffer **buffers) {
+  gContext->VSSetConstantBuffers(0, castI32U32(numBuffers),
+                                 (ID3D11Buffer **)buffers);
+  gContext->PSSetConstantBuffers(0, castI32U32(numBuffers),
+                                 (ID3D11Buffer **)buffers);
 }
 
 void createTexture2D(const TextureDesc *desc, GPUTexture2D **texture,
@@ -470,8 +486,17 @@ void createTexture2D(const TextureDesc *desc, GPUTexture2D **texture,
   }
 }
 
-void createSampler(const D3D11_SAMPLER_DESC *desc, GPUSampler **sampler) {
-  HR_ASSERT(gDevice->CreateSamplerState(desc, (ID3D11SamplerState **)sampler));
+void createSampler(const SamplerDesc *desc, GPUSampler **sampler) {
+  D3D11_SAMPLER_DESC d3d11SamplerDesc = {
+      .Filter = toNativeFilter(desc->filter),
+      .AddressU = toNativeTextureAddressMode(desc->addressMode.u),
+      .AddressV = toNativeTextureAddressMode(desc->addressMode.v),
+      .AddressW = D3D11_TEXTURE_ADDRESS_WRAP,
+      .MaxLOD = D3D11_FLOAT32_MAX,
+  };
+
+  HR_ASSERT(gDevice->CreateSamplerState(&d3d11SamplerDesc,
+                                        (ID3D11SamplerState **)sampler));
 }
 
 void destroyModel(Model *model) {
@@ -515,8 +540,8 @@ void destroyModel(Model *model) {
 }
 
 static void renderMesh(const Model *model, const Mesh *mesh,
-                       UNUSED ID3D11Buffer *drawUniformBuffer,
-                       ID3D11Buffer *materialUniformBuffer) {
+                       UNUSED GPUBuffer *drawUniformBuffer,
+                       GPUBuffer *materialUniformBuffer) {
 
   for (int subMeshIndex = 0; subMeshIndex < mesh->numSubMeshes;
        ++subMeshIndex) {
@@ -556,7 +581,7 @@ static void renderMesh(const Model *model, const Mesh *mesh,
               model->samplers[material->metallicRoughnessSampler];
     }
 
-    gContext->UpdateSubresource(materialUniformBuffer, 0, NULL,
+    gContext->UpdateSubresource((ID3D11Buffer *)materialUniformBuffer, 0, NULL,
                                 &materialUniforms, 0, 0);
 
     ID3D11ShaderResourceView *textureViews[] = {baseColorTextureView,
@@ -572,14 +597,14 @@ static void renderMesh(const Model *model, const Mesh *mesh,
 }
 
 static void renderSceneNode(const Model *model, const SceneNode *node,
-                            ID3D11Buffer *drawUniformBuffer,
-                            ID3D11Buffer *materialUniformBuffer) {
+                            GPUBuffer *drawUniformBuffer,
+                            GPUBuffer *materialUniformBuffer) {
   if (node->mesh >= 0) {
     DrawUniforms drawUniforms = {};
     drawUniforms.modelMat = node->worldTransform.matrix;
     drawUniforms.invModelMat = mat4Inverse(drawUniforms.modelMat);
-    gContext->UpdateSubresource(drawUniformBuffer, 0, NULL, &drawUniforms, 0,
-                                0);
+    gContext->UpdateSubresource((ID3D11Buffer *)drawUniformBuffer, 0, NULL,
+                                &drawUniforms, 0, 0);
     renderMesh(model, &model->meshes[node->mesh], drawUniformBuffer,
                materialUniformBuffer);
   }
@@ -593,11 +618,13 @@ static void renderSceneNode(const Model *model, const SceneNode *node,
   }
 }
 
-void renderModel(const Model *model, ID3D11Buffer *drawUniformBuffer,
-                 ID3D11Buffer *materialUniformBuffer) {
+void renderModel(const Model *model, GPUBuffer *drawUniformBuffer,
+                 GPUBuffer *materialUniformBuffer) {
   UINT stride = sizeof(Vertex), offset = 0;
-  gContext->IASetVertexBuffers(0, 1, &model->gpuVertexBuffer, &stride, &offset);
-  gContext->IASetIndexBuffer(model->gpuIndexBuffer, DXGI_FORMAT_R32_UINT, 0);
+  gContext->IASetVertexBuffers(0, 1, (ID3D11Buffer **)&model->gpuVertexBuffer,
+                               &stride, &offset);
+  gContext->IASetIndexBuffer((ID3D11Buffer *)model->gpuIndexBuffer,
+                             DXGI_FORMAT_R32_UINT, 0);
   gContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
   for (int sceneIndex = 0; sceneIndex < model->numScenes; ++sceneIndex) {

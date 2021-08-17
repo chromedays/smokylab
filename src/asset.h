@@ -3,7 +3,6 @@
 #include "util.h"
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Weverything"
-#include <d3d11_1.h>
 #pragma clang diagnostic pop
 
 FORWARD_DECL(ShaderProgram);
@@ -22,9 +21,9 @@ void loadProgram(const char *baseName, ShaderProgram *program);
 
 void loadGLTFModel(const char *path, Model *model);
 
-void loadIBLTexture(const char *baseName, int *skyWidth, int *skyHeight,
-                    GPUTexture2D **skyTex, GPUTexture2D **irrTex,
-                    ID3D11ShaderResourceView **skyTexView,
-                    ID3D11ShaderResourceView **irrTexView);
+// void loadIBLTexture(const char *baseName, int *skyWidth, int *skyHeight,
+//                     GPUTexture2D **skyTex, GPUTexture2D **irrTex,
+//                     ID3D11ShaderResourceView **skyTexView,
+//                     ID3D11ShaderResourceView **irrTexView);
 
 C_INTERFACE_END

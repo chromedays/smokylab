@@ -6,6 +6,7 @@
 #include "app.h"
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Weverything"
+#include <Windows.h>
 #define CGLTF_IMPLEMENTATION
 #include <cgltf.h>
 #define STB_IMAGE_IMPLEMENTATION
@@ -23,7 +24,7 @@ int main(UNUSED int argc, UNUSED char **argv) {
   ShaderProgram forwardPBRProgram = {};
   loadProgram("forward_pbr", &forwardPBRProgram);
 
-  ID3D11Buffer *viewUniformBuffer;
+  GPUBuffer *viewUniformBuffer;
   BufferDesc viewUniformBufferDesc = {
       .size = sizeof(ViewUniforms),
       .usage = GPUResourceUsage_DEFAULT,
@@ -31,7 +32,7 @@ int main(UNUSED int argc, UNUSED char **argv) {
   };
   createBuffer(&viewUniformBufferDesc, &viewUniformBuffer);
 
-  ID3D11Buffer *drawUniformBuffer;
+  GPUBuffer *drawUniformBuffer;
   BufferDesc drawUniformBufferDesc = {
       .size = sizeof(DrawUniforms),
       .usage = GPUResourceUsage_DEFAULT,
@@ -39,7 +40,7 @@ int main(UNUSED int argc, UNUSED char **argv) {
   };
   createBuffer(&drawUniformBufferDesc, &drawUniformBuffer);
 
-  ID3D11Buffer *materialUniformBuffer;
+  GPUBuffer *materialUniformBuffer;
   BufferDesc materialUniformBufferDesc = {
       .size = sizeof(MaterialUniforms),
       .usage = GPUResourceUsage_DEFAULT,
@@ -221,8 +222,8 @@ int main(UNUSED int argc, UNUSED char **argv) {
     };
     updateBufferData(drawUniformBuffer, &drawUniforms);
 
-    ID3D11Buffer *uniformBuffers[] = {viewUniformBuffer, drawUniformBuffer,
-                                      materialUniformBuffer};
+    GPUBuffer *uniformBuffers[] = {viewUniformBuffer, drawUniformBuffer,
+                                   materialUniformBuffer};
     bindBuffers(ARRAY_SIZE(uniformBuffers), uniformBuffers);
 
     setViewport(0, 0, (float)ww, (float)wh);
