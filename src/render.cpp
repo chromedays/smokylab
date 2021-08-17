@@ -15,6 +15,8 @@
 #pragma clang diagnostic pop
 #include <random>
 
+C_INTERFACE_BEGIN
+
 Renderer gRenderer;
 
 static ID3D11Device *gDevice;
@@ -737,3 +739,5 @@ void destroySSAOResources() {
   COM_RELEASE(gPositionView);
   COM_RELEASE(gPositionTexture);
 }
+
+C_INTERFACE_END

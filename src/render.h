@@ -168,9 +168,9 @@ typedef struct _Renderer {
   GPUDeviceContext *deviceContext;
 } Renderer;
 
-extern Renderer gRenderer;
-
 C_INTERFACE_BEGIN
+
+extern Renderer gRenderer;
 
 void initRenderer(void);
 void destroyRenderer(void);
