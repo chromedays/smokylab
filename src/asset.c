@@ -157,19 +157,19 @@ void loadGLTFModel(const char *path, Model *model) {
       }
       ASSERT(data);
 
-      TextureDesc desc = {
-          .width = w,
-          .height = h,
-          .bytesPerPixel = 4,
-          .format = GPUResourceFormat_R8G8B8A8_UNORM,
-          .usage = GPUResourceUsage_IMMUTABLE,
-          .bindFlags =
-              (GPUResourceBindFlag){GPUResourceBindBits_SHADER_RESOURCE},
-          .generateMipMaps = true,
-          .initialData = data,
-      };
-      createTexture2D(&desc, &model->textures[textureIndex],
-                      &model->textureViews[textureIndex]);
+      createTexture2D(
+          &(TextureDesc){
+              .width = w,
+              .height = h,
+              .bytesPerPixel = 4,
+              .format = GPUResourceFormat_R8G8B8A8_UNORM,
+              .usage = GPUResourceUsage_IMMUTABLE,
+              .bindFlags =
+                  (GPUResourceBindFlag){GPUResourceBindBits_SHADER_RESOURCE},
+              .generateMipMaps = true,
+              .initialData = data,
+          },
+          &model->textures[textureIndex], &model->textureViews[textureIndex]);
 
       stbi_image_free(data);
     }
@@ -453,20 +453,22 @@ void loadGLTFModel(const char *path, Model *model) {
     }
   }
 
-  BufferDesc bufferDesc = {
-      .size = numVertices * castUsizeI32(sizeof(Vertex)),
-      .initialData = model->vertexBase,
-      .usage = GPUResourceUsage_IMMUTABLE,
-      .bindFlags = GPUResourceBindBits_VERTEX_BUFFER,
-  };
-  createBuffer(&bufferDesc, &model->gpuVertexBuffer);
-  bufferDesc = (BufferDesc){
-      .size = numIndices * castUsizeI32(sizeof(VertexIndex)),
-      .initialData = model->indexBase,
-      .usage = GPUResourceUsage_IMMUTABLE,
-      .bindFlags = GPUResourceBindBits_INDEX_BUFFER,
-  };
-  createBuffer(&bufferDesc, &model->gpuIndexBuffer);
+  createBuffer(
+      &(BufferDesc){
+          .size = numVertices * castUsizeI32(sizeof(Vertex)),
+          .initialData = model->vertexBase,
+          .usage = GPUResourceUsage_IMMUTABLE,
+          .bindFlags = GPUResourceBindBits_VERTEX_BUFFER,
+      },
+      &model->gpuVertexBuffer);
+  createBuffer(
+      &(BufferDesc){
+          .size = numIndices * castUsizeI32(sizeof(VertexIndex)),
+          .initialData = model->indexBase,
+          .usage = GPUResourceUsage_IMMUTABLE,
+          .bindFlags = GPUResourceBindBits_INDEX_BUFFER,
+      },
+      &model->gpuIndexBuffer);
 
   model->numNodes = castUsizeI32(gltf->nodes_count);
   model->nodes = MMALLOC_ARRAY(SceneNode, model->numNodes);
