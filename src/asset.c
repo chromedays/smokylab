@@ -460,7 +460,7 @@ void loadGLTFModel(const char *path, Model *model) {
       .bindFlags = GPUResourceBindBits_VERTEX_BUFFER,
   };
   createBuffer(&bufferDesc, &model->gpuVertexBuffer);
-  bufferDesc = {
+  bufferDesc = (BufferDesc){
       .size = numIndices * castUsizeI32(sizeof(VertexIndex)),
       .initialData = model->indexBase,
       .usage = GPUResourceUsage_IMMUTABLE,
