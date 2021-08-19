@@ -638,15 +638,6 @@ void renderModel(const Model *model, GPUBuffer *drawUniformBuffer,
   }
 }
 
-bool processKeyboardEvent(const SDL_Event *event, SDL_Keycode keycode,
-                          bool keyDown) {
-  if ((event->type == SDL_KEYDOWN || event->type == SDL_KEYUP) &&
-      event->key.keysym.sym == keycode) {
-    keyDown = (event->key.state == SDL_PRESSED);
-  }
-  return keyDown;
-}
-
 void generateHammersleySequence(int n, Float4 *values) {
   for (int k = 0; k < n; ++k) {
     float p = 0.5f;

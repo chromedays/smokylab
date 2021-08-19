@@ -175,9 +175,6 @@ extern Renderer gRenderer;
 void initRenderer(void);
 void destroyRenderer(void);
 
-// DXGI_RATIONAL queryRefreshRate(int ww, int wh, DXGI_FORMAT swapChainFormat);
-// HWND getWin32WindowHandle(SDL_Window *window);
-
 void setViewport(float x, float y, float w, float h);
 void setDefaultRenderStates(Float4 clearColor);
 void swapBuffers(void);
@@ -282,7 +279,6 @@ typedef struct _SamplerDesc {
   } addressMode;
 } SamplerDesc;
 
-// TODO: Create custom sampler desc struct
 void createSampler(const SamplerDesc *desc, GPUSampler **sampler);
 
 #define NUM_SAMPLES 40
@@ -404,8 +400,9 @@ void destroyModel(Model *model);
 void renderModel(const Model *model, GPUBuffer *drawUniformBuffer,
                  GPUBuffer *materialUniformBuffer);
 
-bool processKeyboardEvent(const SDL_Event *event, SDL_Keycode keycode,
-                          bool keyDown);
+typedef struct Buffer {
+
+} Buffer;
 
 #if 0
 void generateHammersleySequence(int n, Float4 *values);

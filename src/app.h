@@ -16,4 +16,7 @@ extern App gApp;
 void initApp(const char *title, int windowWidth, int windowHeight);
 void destroyApp(void);
 
+bool processKeyboardEvent(const SDL_Event *event, SDL_Keycode keycode,
+                          bool keyDown);
+
 C_INTERFACE_END

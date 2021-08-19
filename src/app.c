@@ -22,3 +22,12 @@ void destroyApp(void) {
 
   SDL_Quit();
 }
+
+bool processKeyboardEvent(const SDL_Event *event, SDL_Keycode keycode,
+                          bool keyDown) {
+  if ((event->type == SDL_KEYDOWN || event->type == SDL_KEYUP) &&
+      event->key.keysym.sym == keycode) {
+    keyDown = (event->key.state == SDL_PRESSED);
+  }
+  return keyDown;
+}
