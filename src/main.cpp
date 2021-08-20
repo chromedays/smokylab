@@ -1,6 +1,6 @@
 #include "render.h"
 #include "util.h"
-#include "gui.h"
+#include "editor_gui.h"
 #include "asset.h"
 #include "camera.h"
 #include "app.h"

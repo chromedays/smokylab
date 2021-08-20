@@ -1,4 +1,4 @@
-#include "gui.h"
+#include "editor_gui.h"
 #include "render.h"
 #include "app.h"
 #include "camera.h"

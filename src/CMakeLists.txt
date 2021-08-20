@@ -3,13 +3,14 @@ cmake_minimum_required(VERSION 3.11)
 add_executable(
   smokylab
   app.c
-  gui.cpp
   main.cpp
   render.cpp
   str.c
   vmath.c
   asset.c
   camera.c
+  editor.c
+  editor_gui.cpp
   "${SMOKYLAB_DEP_DIR}/imgui/imgui_demo.cpp"
   "${SMOKYLAB_DEP_DIR}/imgui/imgui_draw.cpp"
   "${SMOKYLAB_DEP_DIR}/imgui/imgui_impl_dx11.cpp"

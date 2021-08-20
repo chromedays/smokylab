@@ -400,10 +400,6 @@ void destroyModel(Model *model);
 void renderModel(const Model *model, GPUBuffer *drawUniformBuffer,
                  GPUBuffer *materialUniformBuffer);
 
-typedef struct Buffer {
-
-} Buffer;
-
 #if 0
 void generateHammersleySequence(int n, Float4 *values);
 

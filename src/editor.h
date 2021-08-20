@@ -1,9 +1,13 @@
 #pragma once
 #include "camera.h"
 
+FORWARD_DECL(Model);
+
 typedef struct _Editor {
-  Camera mainCamera;
+  Camera sceneCamera;
   Camera debugCamera;
+
+  Model *model;
 
   Camera *focusedCamera;
 } Editor;
