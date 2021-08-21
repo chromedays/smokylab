@@ -14,7 +14,7 @@ python3 scripts/build.py --configure
 python3 scripts/build.py --build-test
 ```
 
-## Compilation database (compile_commands.json) for vscode
+## How to generate the compilation database file (compile_commands.json)
 ```shell
 python3 scripts/build.py --compdb
 ```
