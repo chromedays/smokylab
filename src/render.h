@@ -207,6 +207,7 @@ typedef struct _BufferDesc {
 } BufferDesc;
 
 void createBuffer(const BufferDesc *desc, GPUBuffer **buffer);
+void destroyBuffer(GPUBuffer *buffer);
 void updateBufferData(GPUBuffer *buffer, void *data);
 void bindBuffers(int numBuffers, GPUBuffer **buffers);
 

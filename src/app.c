@@ -23,6 +23,13 @@ void destroyApp(void) {
   SDL_Quit();
 }
 
+float getWindowAspectRatio(SDL_Window *window) {
+  int w, h;
+  SDL_GetWindowSize(window, &w, &h);
+  float a = (float)w / (float)h;
+  return a;
+}
+
 bool processKeyboardEvent(const SDL_Event *event, SDL_Keycode keycode,
                           bool keyDown) {
   if ((event->type == SDL_KEYDOWN || event->type == SDL_KEYUP) &&

@@ -403,6 +403,8 @@ void createBuffer(const BufferDesc *desc, GPUBuffer **buffer) {
   }
 }
 
+void destroyBuffer(GPUBuffer *buffer) { COM_RELEASE(buffer); }
+
 void updateBufferData(GPUBuffer *buffer, void *data) {
   gContext->UpdateSubresource((ID3D11Buffer *)buffer, 0, NULL, data, 0, 0);
 }

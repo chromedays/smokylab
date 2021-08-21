@@ -16,6 +16,7 @@ extern App gApp;
 void initApp(const char *title, int windowWidth, int windowHeight);
 void destroyApp(void);
 
+float getWindowAspectRatio(SDL_Window *window);
 bool processKeyboardEvent(const SDL_Event *event, SDL_Keycode keycode,
                           bool keyDown);
 
