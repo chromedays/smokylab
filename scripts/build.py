@@ -4,6 +4,8 @@ import subprocess
 import shutil
 from pathlib import Path
 
+project = 'smokylab'
+
 current_dir = Path(os.path.dirname(os.path.realpath(__file__))).absolute()
 source_dir = current_dir / '..'
 out_dir = source_dir / 'bin'
@@ -18,7 +20,7 @@ def run_command(cmd: str):
 
 
 def build(build_dir: Path):
-    target = 'smokylab'
+    target = project
     configs = ['Debug', 'RelWithDebInfo', 'Release']
 
     for config in configs:
