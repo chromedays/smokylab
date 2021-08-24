@@ -4,6 +4,7 @@
 #include "asset.h"
 #include "camera.h"
 #include "app.h"
+#include "editor.h"
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Weverything"
 #include <Windows.h>
@@ -11,8 +12,6 @@
 #include <cgltf.h>
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
-#define CUTE_TIME_IMPLEMENTATION
-#include <cute_time.h>
 #pragma clang diagnostic pop
 
 int main(UNUSED int argc, UNUSED char **argv) {
@@ -20,48 +19,6 @@ int main(UNUSED int argc, UNUSED char **argv) {
   initAssetLoaderFromConfigFile();
   initApp("Smokylab", 1280, 720);
   initRenderer();
-
-  ShaderProgram forwardPBRProgram = {};
-  loadProgram("forward_pbr", &forwardPBRProgram);
-
-  GPUBuffer *viewUniformBuffer;
-  BufferDesc viewUniformBufferDesc = {
-      .size = sizeof(ViewUniforms),
-      .usage = GPUResourceUsage_DEFAULT,
-      .bindFlags = GPUResourceBindBits_CONSTANT_BUFFER,
-  };
-  createBuffer(&viewUniformBufferDesc, &viewUniformBuffer);
-
-  GPUBuffer *drawUniformBuffer;
-  BufferDesc drawUniformBufferDesc = {
-      .size = sizeof(DrawUniforms),
-      .usage = GPUResourceUsage_DEFAULT,
-      .bindFlags = GPUResourceBindBits_CONSTANT_BUFFER,
-  };
-  createBuffer(&drawUniformBufferDesc, &drawUniformBuffer);
-
-  GPUBuffer *materialUniformBuffer;
-  BufferDesc materialUniformBufferDesc = {
-      .size = sizeof(MaterialUniforms),
-      .usage = GPUResourceUsage_DEFAULT,
-      .bindFlags = GPUResourceBindBits_CONSTANT_BUFFER,
-  };
-  createBuffer(&materialUniformBufferDesc, &materialUniformBuffer);
-
-  int numModels = 0;
-  Model *models[10] = {};
-  {
-    Model **model;
-    model = &models[numModels++];
-    *model = MMALLOC(Model);
-    loadGLTFModel("models/Sponza", *model);
-    model = &models[numModels++];
-    *model = MMALLOC(Model);
-    loadGLTFModel("models/FlightHelmet", *model);
-    model = &models[numModels++];
-    *model = MMALLOC(Model);
-    loadGLTFModel("models/Planes", *model);
-  }
 
 #if 0
   // clang-format off
@@ -109,152 +66,32 @@ int main(UNUSED int argc, UNUSED char **argv) {
       .ssaoScaleFactor = 1,
       .ssaoContrastFactor = 1,
       .cam = &cam,
-      .models = models,
-      .numModels = numModels,
+      .models = NULL,
+      .numModels = 0,
   };
 
-  float nearZ = 0.1f;
-  float farZ = 500.f;
-
-  ViewUniforms viewUniforms = {
-      // .skySize = {skyWidth, skyHeight},
-      .exposureNearFar = {1, nearZ, gui.depthVisualizedRangeFar},
-  };
-  // generateHammersleySequence(NUM_SAMPLES, viewUniforms.randomPoints);
+  Editor editor;
+  initEditor(&editor);
 
   LOG("Entering main loop.");
 
-  int lastCursorX = 0;
-  int lastCursorY = 0;
-  bool leftDown = false;
-  bool rightDown = false;
-  bool forwardDown = false;
-  bool backDown = false;
-  bool mouseDown = false;
-  bool running = true;
-  while (running) {
-    SDL_Event event;
-    while (SDL_PollEvent(&event)) {
-      handleGUIEvent(&event);
-      switch (event.type) {
-      case SDL_MOUSEBUTTONDOWN:
-      case SDL_MOUSEBUTTONUP:
-        mouseDown = (event.button.state == SDL_PRESSED);
-        break;
-      case SDL_KEYDOWN:
-      case SDL_KEYUP:
-        forwardDown = processKeyboardEvent(&event, SDLK_w, forwardDown);
-        backDown = processKeyboardEvent(&event, SDLK_s, backDown);
-        leftDown = processKeyboardEvent(&event, SDLK_a, leftDown);
-        rightDown = processKeyboardEvent(&event, SDLK_d, rightDown);
-        break;
-      case SDL_QUIT:
-        running = false;
-        break;
-      }
-    }
+  while (gApp.running) {
+    pollAppEvent();
+    updateAppInput();
 
+    updateEditor(&editor);
     updateGUI(&gui);
-    viewUniforms.exposureNearFar.xz =
-        float2(gui.exposure, gui.depthVisualizedRangeFar);
-    viewUniforms.dirLightDirIntensity.xyz = float3Normalize(float3(
-        cosf(degToRad(gui.lightAngle)), -1, sinf(degToRad(gui.lightAngle))));
-    viewUniforms.dirLightDirIntensity.w = gui.lightIntensity;
-    viewUniforms.overrideOpacity.x = gui.overrideOpacity ? 1 : 0;
-    viewUniforms.overrideOpacity.y = gui.globalOpacity;
-    viewUniforms.ssaoFactors = {(float)gui.ssaoNumSamples, gui.ssaoRadius,
-                                gui.ssaoScaleFactor, gui.ssaoContrastFactor};
 
-    float dt = ct_time();
-
-    int ww, wh;
-    SDL_GetWindowSize(gApp.window, &ww, &wh);
-
-    int cursorX;
-    int cursorY;
-    SDL_GetMouseState(&cursorX, &cursorY);
-
-    int cursorDeltaX = 0;
-    int cursorDeltaY = 0;
-    if (lastCursorX || lastCursorY) {
-      cursorDeltaX = cursorX - lastCursorX;
-      cursorDeltaY = cursorY - lastCursorY;
-    }
-    lastCursorX = cursorX;
-    lastCursorY = cursorY;
-
-    if (mouseDown && !guiWantsCaptureMouse()) {
-      cam.yaw += (float)cursorDeltaX * 0.6f;
-      cam.pitch -= (float)cursorDeltaY * 0.6f;
-      cam.pitch = CLAMP(cam.pitch, -88.f, 88.f);
-    }
-
-    int dx = 0, dy = 0;
-    if (leftDown) {
-      dx -= 1;
-    }
-    if (rightDown) {
-      dx += 1;
-    }
-    if (forwardDown) {
-      dy += 1;
-    }
-    if (backDown) {
-      dy -= 1;
-    }
-
-    float camMovementSpeed = 4.f;
-    Float3 camMovement = (getRight(&cam) * (float)dx * camMovementSpeed +
-                          getLook(&cam) * (float)dy * camMovementSpeed) *
-                         dt;
-    cam.pos += camMovement;
-
-    viewUniforms.viewPos.xyz = cam.pos;
-    viewUniforms.viewMat = getViewMatrix(&cam);
-    viewUniforms.projMat =
-        mat4Perspective(60, (float)ww / (float)wh, nearZ, farZ);
-
-    updateBufferData(viewUniformBuffer, &viewUniforms);
-
-    DrawUniforms drawUniforms = {
-        .modelMat = mat4Identity(),
-        .invModelMat = mat4Identity(),
-    };
-    updateBufferData(drawUniformBuffer, &drawUniforms);
-
-    GPUBuffer *uniformBuffers[] = {viewUniformBuffer, drawUniformBuffer,
-                                   materialUniformBuffer};
-    bindBuffers(ARRAY_SIZE(uniformBuffers), uniformBuffers);
-
-    setViewport(0, 0, (float)ww, (float)wh);
-
-    {
-      setDefaultRenderStates(float4(0, 0, 0, 0));
-      useProgram(&forwardPBRProgram);
-      for (int i = 0; i < numModels; ++i) {
-        renderModel(models[i], drawUniformBuffer, materialUniformBuffer);
-      }
-    }
+    renderEditor(&editor);
 
     renderGUI();
 
     swapBuffers();
   }
 
+  destroyEditor(&editor);
+
   destroyGUI();
-
-  // destroySSAOResources();
-
-  for (int i = 0; i < numModels; ++i) {
-    destroyModel(models[i]);
-    MFREE(models[i]);
-  }
-
-  COM_RELEASE(materialUniformBuffer);
-  COM_RELEASE(drawUniformBuffer);
-  COM_RELEASE(viewUniformBuffer);
-
-  destroyProgram(&forwardPBRProgram);
 
   destroyRenderer();
 

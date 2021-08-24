@@ -11,6 +11,7 @@ typedef struct _Camera {
 } Camera;
 
 void initCameraLookingAtTarget(Camera *cam, Float3 pos, Float3 target);
+void moveCameraByInputs(Camera *cam);
 
 Float3 getLook(const Camera *cam);
 Float3 getRight(const Camera *cam);

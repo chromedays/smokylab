@@ -2,6 +2,7 @@
 #include "util.h"
 #include "asset.h"
 #include "app.h"
+#include "camera.h"
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Weverything"
 #include <cgltf.h>
@@ -33,6 +34,12 @@ static ID3D11SamplerState *gDefaultSampler;
 
 static ID3D11DepthStencilState *gDefaultDepthStencilState;
 static ID3D11RasterizerState *gDefaultRasterizerState;
+
+static GPUBuffer *gViewBuffer;
+static GPUBuffer *gMaterialBuffer;
+static GPUBuffer *gDrawBuffer;
+
+static ShaderProgram gForwardPBRProgram;
 
 static D3D11_USAGE toNativeUsage(GPUResourceUsage usage) {
   return (D3D11_USAGE)usage;
@@ -231,9 +238,37 @@ void initRenderer(void) {
   // };
   // HR_ASSERT(gDevice->CreateRasterizerState(&wireframeRasterizerStateDesc,
   //                                          &wireframeRasterizerState));
+
+  BufferDesc bufferDesc;
+
+  bufferDesc = {.size = sizeof(ViewUniforms),
+                .usage = GPUResourceUsage_DEFAULT,
+                .bindFlags = GPUResourceBindBits_CONSTANT_BUFFER};
+  createBuffer(&bufferDesc, &gViewBuffer);
+
+  bufferDesc = {
+      .size = sizeof(MaterialUniforms),
+      .usage = GPUResourceUsage_DEFAULT,
+      .bindFlags = GPUResourceBindBits_CONSTANT_BUFFER,
+  };
+  createBuffer(&bufferDesc, &gMaterialBuffer);
+
+  bufferDesc = {
+      .size = sizeof(DrawUniforms),
+      .usage = GPUResourceUsage_DEFAULT,
+      .bindFlags = GPUResourceBindBits_CONSTANT_BUFFER,
+  };
+  createBuffer(&bufferDesc, &gDrawBuffer);
+
+  loadProgram("forward_pbr", &gForwardPBRProgram);
 }
 
 void destroyRenderer(void) {
+  destroyProgram(&gForwardPBRProgram);
+
+  destroyBuffer(gDrawBuffer);
+  destroyBuffer(gMaterialBuffer);
+  destroyBuffer(gViewBuffer);
 
   // COM_RELEASE(wireframeRasterizerState);
   COM_RELEASE(gDefaultRasterizerState);
@@ -283,7 +318,7 @@ void setViewport(float x, float y, float w, float h) {
   gContext->RSSetViewports(1, &viewport);
 }
 
-void setDefaultRenderStates(Float4 clearColor) {
+void setDefaultModelRenderStates(Float4 clearColor) {
   gContext->OMSetRenderTargets(1, &gSwapChainRTV, gSwapChainDSV);
   gContext->ClearRenderTargetView(gSwapChainRTV, (FLOAT *)&clearColor);
   gContext->ClearDepthStencilView(gSwapChainDSV, D3D11_CLEAR_DEPTH, 0, 0);
@@ -292,6 +327,11 @@ void setDefaultRenderStates(Float4 clearColor) {
   gContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
   gContext->OMSetDepthStencilState(gDefaultDepthStencilState, 0);
   gContext->OMSetBlendState(NULL, NULL, 0xFFFFFFFF);
+
+  GPUBuffer *uniformBuffers[] = {gViewBuffer, gDrawBuffer, gMaterialBuffer};
+  bindBuffers(ARRAY_SIZE(uniformBuffers), uniformBuffers);
+
+  useProgram(&gForwardPBRProgram);
 }
 
 void swapBuffers(void) { gSwapChain->Present(1, 0); }
@@ -622,8 +662,10 @@ static void renderSceneNode(const Model *model, const SceneNode *node,
   }
 }
 
-void renderModel(const Model *model, GPUBuffer *drawUniformBuffer,
-                 GPUBuffer *materialUniformBuffer) {
+void renderModel(const Model *model) {
+  GPUBuffer *materialUniformBuffer = gMaterialBuffer;
+  GPUBuffer *drawUniformBuffer = gDrawBuffer;
+
   UINT stride = sizeof(Vertex), offset = 0;
   gContext->IASetVertexBuffers(0, 1, (ID3D11Buffer **)&model->gpuVertexBuffer,
                                &stride, &offset);
@@ -640,97 +682,20 @@ void renderModel(const Model *model, GPUBuffer *drawUniformBuffer,
   }
 }
 
-void generateHammersleySequence(int n, Float4 *values) {
-  for (int k = 0; k < n; ++k) {
-    float p = 0.5f;
-    int kk = k;
-    float u = 0.5f;
-    while (kk) {
-      if (kk & 1) {
-        u += p;
-      }
-      p *= 0.5f;
-      kk >>= 1;
-    }
-    float v = ((float)k + 0.5f) / (float)n;
-    values[k].xy = {u, v};
-  }
-
-  Float2 avg = {0};
-  for (int i = 0; i < n; ++i) {
-    avg.xy += values[i].xy;
-  }
-  avg /= (float)n;
-}
-
-static GPUTexture2D *gPositionTexture;
-static GPUTextureView *gPositionView;
-static ID3D11RenderTargetView *gPositionRTV;
-
-static GPUTexture2D *gNormalTexture;
-static GPUTextureView *gNormalView;
-static ID3D11RenderTargetView *gNormalRTV;
-
-static GPUTexture2D *gAlbedoTexture;
-static GPUTextureView *gAlbedoView;
-static ID3D11RenderTargetView *gAlbedoRTV;
-
-static ShaderProgram gSSAOProgram;
-
-void createSSAOResources(int ww, int wh) {
-  TextureDesc textureDesc = {
-      .width = ww,
-      .height = wh,
-      .format = GPUResourceFormat_R16G16B16A16_FLOAT,
-      .usage = GPUResourceUsage_DEFAULT,
-      .bindFlags = GPUResourceBindBits_RENDER_TARGET |
-                   GPUResourceBindBits_SHADER_RESOURCE,
+void setCamera(const Camera *camera) {
+  ViewUniforms viewUniforms = {
+      .viewMat = getViewMatrix(camera),
+      .projMat =
+          mat4Perspective(60, getWindowAspectRatio(gApp.window), 0.1f, 500.f),
   };
-
-  createTexture2D(&textureDesc, &gPositionTexture, &gPositionView);
-  HR_ASSERT(gDevice->CreateRenderTargetView((ID3D11Texture2D *)gPositionTexture,
-                                            NULL, &gPositionRTV));
-  createTexture2D(&textureDesc, &gNormalTexture, &gNormalView);
-  HR_ASSERT(gDevice->CreateRenderTargetView((ID3D11Texture2D *)gNormalTexture,
-                                            NULL, &gNormalRTV));
-  createTexture2D(&textureDesc, &gAlbedoTexture, &gAlbedoView);
-  HR_ASSERT(gDevice->CreateRenderTargetView((ID3D11Texture2D *)gAlbedoTexture,
-                                            NULL, &gAlbedoRTV));
-
-  loadProgram("ssao", &gSSAOProgram);
-
-  // std::uniform_real_distribution<float> randomFloats(0, 1);
-  // std::default_random_engine generator;
-  // std::vector<Float4> ssaoKernel;
-  // for (int i = 0; i < 64; ++i) {
-  //   Float4 sample = {
-  //       randomFloats(generator) * 2.f - 1.f,
-  //       randomFloats(generator) * 2.f - 1.f,
-  //       randomFloats(generator) * 2.f - 1.f,
-  //       0,
-  //   };
-  //   sample.xyz = float3Normalize(sample.xyz);
-  //   float scale = (float)i / 64.f;
-  //   auto lerp = [](float a, float b, float f) { return a + f * (b - a); };
-  //   scale = lerp(0.1f, 1.f, scale * scale);
-  //   sample *= scale;
-  //   // sample *= randomFloats(generator);
-  //   ssaoKernel.push_back(sample);
-  // }
+  viewUniforms.viewPos.xyz = camera->pos;
+  updateBufferData(gViewBuffer, &viewUniforms);
 }
 
-void destroySSAOResources() {
-  destroyProgram(&gSSAOProgram);
-
-  COM_RELEASE(gAlbedoRTV);
-  COM_RELEASE(gAlbedoView);
-  COM_RELEASE(gAlbedoTexture);
-  COM_RELEASE(gNormalRTV);
-  COM_RELEASE(gNormalView);
-  COM_RELEASE(gNormalTexture);
-  COM_RELEASE(gPositionRTV);
-  COM_RELEASE(gPositionView);
-  COM_RELEASE(gPositionTexture);
+void setViewportByAppWindow(void) {
+  int windowWidth, windowHeight;
+  SDL_GetWindowSize(gApp.window, &windowWidth, &windowHeight);
+  setViewport(0, 0, (float)windowWidth, (float)windowHeight);
 }
 
 C_INTERFACE_END

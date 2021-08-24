@@ -10,11 +10,6 @@ typedef struct _Editor {
   Camera *focusedCamera;
 
   Model *model;
-
-  GPUBuffer *viewBuffer;
-  GPUBuffer *materialBuffer;
-  GPUBuffer *drawBuffer;
-
 } Editor;
 
 C_INTERFACE_BEGIN

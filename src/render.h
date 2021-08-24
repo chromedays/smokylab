@@ -7,6 +7,8 @@
 #include <SDL2/SDL.h>
 #pragma clang diagnostic pop
 
+FORWARD_DECL(Camera);
+
 typedef enum _GPUResourceUsage {
   GPUResourceUsage_DEFAULT = 0,
   GPUResourceUsage_IMMUTABLE = 1,
@@ -176,7 +178,7 @@ void initRenderer(void);
 void destroyRenderer(void);
 
 void setViewport(float x, float y, float w, float h);
-void setDefaultRenderStates(Float4 clearColor);
+void setDefaultModelRenderStates(Float4 clearColor);
 void swapBuffers(void);
 
 typedef struct _ShaderProgram {
@@ -398,30 +400,11 @@ typedef struct _Model {
 } Model;
 
 void destroyModel(Model *model);
-void renderModel(const Model *model, GPUBuffer *drawUniformBuffer,
-                 GPUBuffer *materialUniformBuffer);
+void renderModel(const Model *model);
 
-#if 0
-void generateHammersleySequence(int n, Float4 *values);
+// TODO: Usage-specific functions. These might pull out to separated files
 
-extern ID3D11Texture2D *gPositionTexture;
-extern ID3D11ShaderResourceView *gPositionView;
-extern ID3D11RenderTargetView *gPositionRTV;
-
-extern ID3D11Texture2D *gNormalTexture;
-extern ID3D11ShaderResourceView *gNormalView;
-extern ID3D11RenderTargetView *gNormalRTV;
-
-extern ID3D11Texture2D *gAlbedoTexture;
-extern ID3D11ShaderResourceView *gAlbedoView;
-extern ID3D11RenderTargetView *gAlbedoRTV;
-
-extern ID3D11Buffer *gSSAOKernelBuffer;
-
-extern ShaderProgram gSSAOProgram;
-
-void createSSAOResources(int ww, int wh);
-void destroySSAOResources();
-#endif
+void setCamera(const Camera *camera);
+void setViewportByAppWindow(void);
 
 C_INTERFACE_END
