@@ -57,6 +57,7 @@ if __name__ == '__main__':
         builder = ShaderBuilder(shader_dir, out_dir)
 
         builder.build_shader('forward_pbr')
+        builder.build_shader('debug')
         # builder.build_shader('brdf')
         # builder.build_shader('new_brdf')
         # builder.build_shader('sky')

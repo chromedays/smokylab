@@ -18,6 +18,7 @@ typedef struct _App {
     bool forwardDown;
     bool backDown;
     bool mouseDown;
+    bool numKeysDown[10];
     int cursorDeltaX;
     int cursorDeltaY;
   } input;

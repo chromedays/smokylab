@@ -406,5 +406,6 @@ void renderModel(const Model *model);
 
 void setCamera(const Camera *camera);
 void setViewportByAppWindow(void);
+void renderCameraVolume(const Camera *camera);
 
 C_INTERFACE_END

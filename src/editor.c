@@ -24,6 +24,12 @@ void destroyEditor(Editor *editor) {
 }
 
 void updateEditor(UNUSED Editor *editor) {
+  if (gApp.input.numKeysDown[1]) {
+    editor->focusedCamera = &editor->sceneCamera;
+  }
+  if (gApp.input.numKeysDown[2]) {
+    editor->focusedCamera = &editor->debugCamera;
+  }
   moveCameraByInputs(editor->focusedCamera);
 }
 
@@ -38,4 +44,6 @@ void renderEditor(const Editor *editor) {
     setDefaultModelRenderStates(float4(0, 0, 0, 0));
     renderModel(editor->model);
   }
+
+  renderCameraVolume(&editor->sceneCamera);
 }

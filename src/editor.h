@@ -2,7 +2,6 @@
 #include "camera.h"
 
 FORWARD_DECL(Model);
-FORWARD_DECL(GPUBuffer);
 
 typedef struct _Editor {
   Camera sceneCamera;

@@ -10,6 +10,11 @@ void initCameraLookingAtTarget(Camera *cam, Float3 pos, Float3 target) {
   // TODO: Use radians for pitch and yaw
   cam->pitch = radToDeg(atan2f(look.y, float2Length(look.xz)));
   cam->yaw = radToDeg(atan2f(look.z, look.x));
+
+  cam->nearZ = 0.1f;
+  cam->farZ = 500.f;
+  cam->aspectRatio = getWindowAspectRatio(gApp.window);
+  cam->verticalFovDeg = 60.f;
 }
 
 void moveCameraByInputs(Camera *cam) {

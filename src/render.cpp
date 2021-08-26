@@ -35,11 +35,15 @@ static ID3D11SamplerState *gDefaultSampler;
 static ID3D11DepthStencilState *gDefaultDepthStencilState;
 static ID3D11RasterizerState *gDefaultRasterizerState;
 
+static const Camera *gViewCamera;
 static GPUBuffer *gViewBuffer;
 static GPUBuffer *gMaterialBuffer;
 static GPUBuffer *gDrawBuffer;
 
+static GPUBuffer *gCameraVolumeBuffer;
+
 static ShaderProgram gForwardPBRProgram;
+static ShaderProgram gDebugProgram;
 
 static D3D11_USAGE toNativeUsage(GPUResourceUsage usage) {
   return (D3D11_USAGE)usage;
@@ -260,12 +264,22 @@ void initRenderer(void) {
   };
   createBuffer(&bufferDesc, &gDrawBuffer);
 
+  bufferDesc = {
+      .size = sizeof(Float4) * 24,
+      .usage = GPUResourceUsage_DEFAULT,
+      .bindFlags = GPUResourceBindBits_VERTEX_BUFFER,
+  };
+  createBuffer(&bufferDesc, &gCameraVolumeBuffer);
+
   loadProgram("forward_pbr", &gForwardPBRProgram);
+  loadProgram("debug", &gDebugProgram);
 }
 
 void destroyRenderer(void) {
+  destroyProgram(&gDebugProgram);
   destroyProgram(&gForwardPBRProgram);
 
+  destroyBuffer(gCameraVolumeBuffer);
   destroyBuffer(gDrawBuffer);
   destroyBuffer(gMaterialBuffer);
   destroyBuffer(gViewBuffer);
@@ -685,17 +699,84 @@ void renderModel(const Model *model) {
 void setCamera(const Camera *camera) {
   ViewUniforms viewUniforms = {
       .viewMat = getViewMatrix(camera),
-      .projMat =
-          mat4Perspective(60, getWindowAspectRatio(gApp.window), 0.1f, 500.f),
+      .projMat = mat4Perspective(camera->verticalFovDeg, camera->aspectRatio,
+                                 camera->nearZ, camera->farZ),
   };
   viewUniforms.viewPos.xyz = camera->pos;
   updateBufferData(gViewBuffer, &viewUniforms);
+  gViewCamera = camera;
 }
 
 void setViewportByAppWindow(void) {
   int windowWidth, windowHeight;
   SDL_GetWindowSize(gApp.window, &windowWidth, &windowHeight);
   setViewport(0, 0, (float)windowWidth, (float)windowHeight);
+}
+
+void renderCameraVolume(const Camera *camera) {
+  if (gViewCamera == camera) {
+    return;
+  }
+
+  // update camera volume vertex buffer
+  // bind debug render pipeline
+  // draw with the buffer
+
+  Float2 fovDeg = float2(camera->verticalFovDeg * camera->aspectRatio,
+                         camera->verticalFovDeg);
+
+  // Float2 sinFov = degToRad(fov)
+  Float2 tanFov = float2(atanf(degToRad(fovDeg.x)), atanf(degToRad(fovDeg.y)));
+  float nearZ = camera->nearZ;
+  float farZ = camera->farZ * 0.002f;
+  // clang-format off
+  Float3 vertices[] = {
+    float3(-nearZ * tanFov.x, -nearZ * tanFov.y, -nearZ),
+    float3( nearZ * tanFov.x, -nearZ * tanFov.y, -nearZ),
+    float3( nearZ * tanFov.x, -nearZ * tanFov.y, -nearZ),
+    float3( nearZ * tanFov.x,  nearZ * tanFov.y, -nearZ),
+    float3( nearZ * tanFov.x,  nearZ * tanFov.y, -nearZ),
+    float3(-nearZ * tanFov.x,  nearZ * tanFov.y, -nearZ),
+    float3(-nearZ * tanFov.x,  nearZ * tanFov.y, -nearZ),
+    float3(-nearZ * tanFov.x, -nearZ * tanFov.y, -nearZ),
+
+    float3(-nearZ * tanFov.x, -nearZ * tanFov.y, -nearZ),
+    float3(-farZ * tanFov.x, -farZ * tanFov.y, -farZ),
+    float3( nearZ * tanFov.x, -nearZ * tanFov.y, -nearZ),
+    float3( farZ * tanFov.x, -farZ * tanFov.y, -farZ),
+    float3( nearZ * tanFov.x,  nearZ * tanFov.y, -nearZ),
+    float3( farZ * tanFov.x,  farZ * tanFov.y, -farZ),
+    float3(-nearZ * tanFov.x,  nearZ * tanFov.y, -nearZ),
+    float3(-farZ * tanFov.x,  farZ * tanFov.y, -farZ),
+
+    float3(-farZ * tanFov.x, -farZ * tanFov.y, -farZ),
+    float3( farZ * tanFov.x, -farZ * tanFov.y, -farZ),
+    float3( farZ * tanFov.x, -farZ * tanFov.y, -farZ),
+    float3( farZ * tanFov.x,  farZ * tanFov.y, -farZ),
+    float3( farZ * tanFov.x,  farZ * tanFov.y, -farZ),
+    float3(-farZ * tanFov.x,  farZ * tanFov.y, -farZ),
+    float3(-farZ * tanFov.x,  farZ * tanFov.y, -farZ),
+    float3(-farZ * tanFov.x, -farZ * tanFov.y, -farZ),
+  };
+  // clang-format on
+  updateBufferData(gCameraVolumeBuffer, vertices);
+
+  DrawUniforms drawUniforms = {
+      .modelMat = mat4Inverse(getViewMatrix(camera)),
+      .invModelMat = getViewMatrix(camera),
+  };
+  updateBufferData(gDrawBuffer, &drawUniforms);
+
+  // TODO: setDebugRenderStates?
+  useProgram(&gDebugProgram);
+
+  UINT stride = sizeof(Float4);
+  UINT offset = 0;
+  gContext->IASetVertexBuffers(0, 1, (ID3D11Buffer **)&gCameraVolumeBuffer,
+                               &stride, &offset);
+  gContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
+
+  gContext->Draw(24, 0);
 }
 
 C_INTERFACE_END

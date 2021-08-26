@@ -50,6 +50,10 @@ void pollAppEvent(void) {
           processKeyboardEvent(&event, SDLK_a, gApp.input.leftDown);
       gApp.input.rightDown =
           processKeyboardEvent(&event, SDLK_d, gApp.input.rightDown);
+      for (int i = 0; i < 10; ++i) {
+        gApp.input.numKeysDown[i] =
+            processKeyboardEvent(&event, SDLK_0 + i, gApp.input.numKeysDown[i]);
+      }
       break;
     case SDL_QUIT:
       gApp.running = false;

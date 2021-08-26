@@ -8,6 +8,11 @@ typedef struct _Camera {
   Float3 pos;
   float yaw;
   float pitch;
+
+  float nearZ;
+  float farZ;
+  float aspectRatio;
+  float verticalFovDeg;
 } Camera;
 
 void initCameraLookingAtTarget(Camera *cam, Float3 pos, Float3 target);
