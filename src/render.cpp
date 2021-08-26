@@ -718,17 +718,12 @@ void renderCameraVolume(const Camera *camera) {
     return;
   }
 
-  // update camera volume vertex buffer
-  // bind debug render pipeline
-  // draw with the buffer
+  float halfFovRad = degToRad(camera->verticalFovDeg * 0.5f);
 
-  Float2 fovDeg = float2(camera->verticalFovDeg * camera->aspectRatio,
-                         camera->verticalFovDeg);
-
-  // Float2 sinFov = degToRad(fov)
-  Float2 tanFov = float2(atanf(degToRad(fovDeg.x)), atanf(degToRad(fovDeg.y)));
+  Float2 tanFov =
+      float2(tanf(halfFovRad) * camera->aspectRatio, tanf(halfFovRad));
   float nearZ = camera->nearZ;
-  float farZ = camera->farZ * 0.002f;
+  float farZ = camera->farZ * 0.005f;
   // clang-format off
   Float3 vertices[] = {
     float3(-nearZ * tanFov.x, -nearZ * tanFov.y, -nearZ),

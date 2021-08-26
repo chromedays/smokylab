@@ -9,8 +9,8 @@ void initEditor(Editor *editor) {
   *editor = (Editor){};
   initCameraLookingAtTarget(&editor->sceneCamera, float3(-5, 1, 0),
                             float3(-5, 1.105f, -1));
-  initCameraLookingAtTarget(&editor->debugCamera, float3(10, 10, 10),
-                            float3(0, 0, 0));
+  initCameraLookingAtTarget(&editor->debugCamera, float3(-5, 1, 0),
+                            float3(-5, 1.105f, -1));
 
   editor->model = MMALLOC(Model);
   loadGLTFModel(DEFAULT_MODEL, editor->model);
