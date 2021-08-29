@@ -5,6 +5,7 @@
 #include "camera.h"
 #include "app.h"
 #include "editor.h"
+#include "resource.h"
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Weverything"
 #include <Windows.h>
@@ -19,6 +20,7 @@ int main(UNUSED int argc, UNUSED char **argv) {
   initAssetLoaderFromConfigFile();
   initApp("Smokylab", 1280, 720);
   initRenderer();
+  initResourceManager();
 
 #if 0
   // clang-format off
@@ -92,6 +94,8 @@ int main(UNUSED int argc, UNUSED char **argv) {
   destroyEditor(&editor);
 
   destroyGUI();
+
+  destroyResourceManager();
 
   destroyRenderer();
 

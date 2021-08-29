@@ -11,6 +11,7 @@ add_executable(
   camera.c
   editor.c
   editor_gui.cpp
+  resource.c
   "${SMOKYLAB_DEP_DIR}/imgui/imgui_demo.cpp"
   "${SMOKYLAB_DEP_DIR}/imgui/imgui_draw.cpp"
   "${SMOKYLAB_DEP_DIR}/imgui/imgui_impl_dx11.cpp"
