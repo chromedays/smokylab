@@ -1,6 +1,8 @@
 #include "resource.h"
 #include "render.h"
 
+#define PUSH_STRUCT(p, type) ((uint8_t *)p += sizeof(type), (type *)p)
+
 typedef struct _GPUBufferSlice {
   GPUBuffer *buffer;
   int offset;
@@ -120,7 +122,12 @@ void destroyResourceManager(void) {
 
 Vertex *allocateCPUVertexBuffer(void);
 VertexIndex *allocateCPUIndexBuffer(void);
-SubMesh *allocateSubMesh(void);
+
+SubMesh *allocateSubMesh(void) {
+  ASSERT(gResourceManager.numStaticSubMeshes < RESERVED_NUM_SUBMESHES);
+  return &gResourceManager
+              .staticSubMeshes[gResourceManager.numStaticSubMeshes++];
+}
 
 Mesh *allocateStaticMesh(void) {
   ASSERT(gResourceManager.numStaticMeshes < RESERVED_NUM_MESHES);
@@ -128,3 +135,6 @@ Mesh *allocateStaticMesh(void) {
 }
 
 // hash...ed..?
+
+// PushMesh()
+// PushSubMesh() { ..append submesh to last mesh }

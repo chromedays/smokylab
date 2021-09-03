@@ -1,6 +1,7 @@
 #include "asset.h"
 #include "util.h"
 #include "render.h"
+#include "resource.h"
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Weverything"
 #include <cgltf.h>
@@ -321,14 +322,17 @@ void loadGLTFModel(const char *path, Model *model) {
   }
 
   model->numMeshes = castUsizeI32(gltf->meshes_count);
-  model->meshes = MMALLOC_ARRAY(Mesh, model->numMeshes);
+  model->meshes = MMALLOC_ARRAY(Mesh *, model->numMeshes);
+  for (int i = 0; i < model->numMeshes; ++i) {
+    model->meshes[i] = allocateStaticMesh();
+  }
 
   int numVertices = 0;
   int numIndices = 0;
   for (cgltf_size meshIndex = 0; meshIndex < gltf->meshes_count; ++meshIndex) {
     cgltf_mesh *gltfMesh = &gltf->meshes[meshIndex];
 
-    Mesh *mesh = &model->meshes[meshIndex];
+    Mesh *mesh = model->meshes[meshIndex];
     mesh->numSubMeshes = castUsizeI32(gltfMesh->primitives_count);
     mesh->subMeshes = MMALLOC_ARRAY(SubMesh, mesh->numSubMeshes);
 
@@ -376,7 +380,7 @@ void loadGLTFModel(const char *path, Model *model) {
 
   for (cgltf_size meshIndex = 0; meshIndex < gltf->meshes_count; ++meshIndex) {
     cgltf_mesh *gltfMesh = &gltf->meshes[meshIndex];
-    Mesh *mesh = &model->meshes[meshIndex];
+    Mesh *mesh = model->meshes[meshIndex];
 
     for (cgltf_size primIndex = 0; primIndex < gltfMesh->primitives_count;
          ++primIndex) {

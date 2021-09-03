@@ -577,7 +577,7 @@ void destroyModel(Model *model) {
   MFREE(model->bufferBase);
 
   for (int i = 0; i < model->numMeshes; ++i) {
-    MFREE(model->meshes[i].subMeshes);
+    MFREE(model->meshes[i]->subMeshes);
   }
   MFREE(model->meshes);
 
@@ -663,7 +663,7 @@ static void renderSceneNode(const Model *model, const SceneNode *node,
     drawUniforms.invModelMat = mat4Inverse(drawUniforms.modelMat);
     gContext->UpdateSubresource((ID3D11Buffer *)drawUniformBuffer, 0, NULL,
                                 &drawUniforms, 0, 0);
-    renderMesh(model, &model->meshes[node->mesh], drawUniformBuffer,
+    renderMesh(model, model->meshes[node->mesh], drawUniformBuffer,
                materialUniformBuffer);
   }
 

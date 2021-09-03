@@ -378,7 +378,7 @@ typedef struct _Model {
   Material *materials;
 
   int numMeshes;
-  Mesh *meshes;
+  Mesh **meshes;
 
   int numNodes;
   SceneNode *nodes;
