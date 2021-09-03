@@ -1,8 +1,12 @@
 #include "resource.h"
 #include "render.h"
 
-#define PUSH_STRUCT(p, type) ((uint8_t *)p += sizeof(type), (type *)p)
+#define PUSH_STRUCT(p, type)                                                   \
+  (p = (__typeof__(p))((uint8_t *)p + sizeof(type)), (type *)p)
+#define PUSH_STRUCT_ARRAY(p, type, count)                                      \
+  (p = (__typeof__(p))((uint8_t *)p + sizeof(type) * count), (type *)p)
 
+#if 0
 typedef struct _GPUBufferSlice {
   GPUBuffer *buffer;
   int offset;
@@ -20,41 +24,103 @@ typedef struct _SampledTexture {
   GPUSampler *sampler;
 } SampledTexture;
 
-// typedef struct _TextureView {
-//   ID3D11Texture2D *texture;
-//   ID3D11ShaderResourceView *view;
-// } TextureView;
+typedef struct _TextureView {
+  ID3D11Texture2D *texture;
+  ID3D11ShaderResourceView *view;
+} TextureView;
 
 typedef struct _TextureHandle {
   int index;
 } TextureHandle;
+#endif
 
-#define RESERVED_NUM_SUBMESHES 100
-#define RESERVED_NUM_MESHES 100
-#define RESERVED_NUM_VERTICES 10000
-#define RESERVED_NUM_INDICES 10000
-#define RESERVED_NUM_MATERIALS 100
-#define RESERVED_NUM_TEXTURES 100
-#define RESERVED_NUM_TEXTUREVIEWS 100
-#define RESERVED_NUM_SAMPLERS 100
+typedef struct _MeshBlock {
+  int size;
+  struct _MeshBlock *next;
+  Mesh *mesh;
+} MeshBlock;
 
-// pushStruct()..
+typedef struct _MeshStorage {
+  int size;
+  int used;
+  void *mem;
+  MeshBlock *head;
+  MeshBlock *tail;
+} MeshStorage;
+
+void initMeshStorage(MeshStorage *storage, int reservedSizeInBytes) {
+  *storage = (MeshStorage){};
+  storage->size = reservedSizeInBytes;
+  storage->mem = MMALLOC_ARRAY(uint8_t, storage->size);
+  storage->head = storage->tail = (MeshBlock *)storage->mem;
+}
+
+void destroyMeshStorage(MeshStorage *storage) { MFREE(storage->mem); }
+
+static Mesh *allocateStaticMeshFromStorage(MeshStorage *storage,
+                                           int numSubMeshes) {
+  ASSERT(storage->tail);
+  int blockSize =
+      sizeof(MeshBlock) + sizeof(Mesh) + numSubMeshes * sizeof(SubMesh);
+  ASSERT((storage->used + blockSize) <= storage->size);
+  MeshBlock *curr = storage->tail;
+  curr->size = blockSize;
+  curr->next = (MeshBlock *)((uint8_t *)curr + blockSize);
+  Mesh *mesh = curr->mesh = (Mesh *)((uint8_t *)curr + sizeof(MeshBlock));
+  mesh->numSubMeshes = numSubMeshes;
+  mesh->subMeshes = (SubMesh *)((uint8_t *)mesh + sizeof(Mesh));
+  storage->tail = curr->next;
+
+  return mesh;
+}
+
+typedef struct _VertexStorage {
+  int numVertices;
+  int usedVertices;
+  Vertex *vertices;
+  // GPUBuffer *gpuVertexBufferCache;
+  // bool isGPUStaticBufferCacheDirty;
+
+  int numIndices;
+  int usedIndices;
+  VertexIndex *indices;
+  // GPUBuffer *gpuIndexBufferCache;
+  // bool isGPUStaticBufferCacheDirty;
+} VertexStorage;
+
+void initVertexStorage(VertexStorage *storage, int reservedNumVertices,
+                       int reservedNumIndices) {
+  *storage = (VertexStorage){};
+  storage->numVertices = reservedNumVertices;
+  storage->vertices = MMALLOC_ARRAY(Vertex, storage->numVertices);
+  storage->numIndices = reservedNumIndices;
+  storage->indices = MMALLOC_ARRAY(VertexIndex, storage->numIndices);
+}
+
+void destroyVertexStorage(VertexStorage *storage) {
+  MFREE(storage->indices);
+  MFREE(storage->vertices);
+}
+
+static Vertex *allocateVerticesFromStorage(VertexStorage *storage,
+                                           int numVertices) {
+  ASSERT((storage->usedVertices + numVertices) <= storage->numVertices);
+  Vertex *result = storage->vertices + storage->usedVertices;
+  storage->usedVertices += numVertices;
+  return result;
+}
+
+static VertexIndex *allocateIndicesFromStorage(VertexStorage *storage,
+                                               int numIndices) {
+  ASSERT((storage->usedIndices + numIndices) <= storage->numIndices);
+  VertexIndex *result = storage->indices + storage->usedIndices;
+  storage->usedIndices += numIndices;
+  return result;
+}
 
 typedef struct _ResourceTable {
-  int memSize;
-  void *memBase;
-  SubMesh *staticSubMeshes;
-  int numStaticSubMeshes;
-  Mesh *staticMeshes;
-  int numStaticMeshes;
-  void *cpuStaticBufferBase;
-  int cpuStaticBufferSize;
-  Vertex *cpuStaticVertexBuffer;
-  int numVertices;
-  VertexIndex *cpuStaticIndexBuffer;
-  int numIndices;
-  bool isGPUStaticBufferCacheDirty;
-  GPUBuffer *gpuStaticBufferCache;
+  MeshStorage meshStorage;
+  VertexStorage vertexStorage;
 
 #if 0
   Material *materials;
@@ -66,8 +132,9 @@ typedef struct _ResourceTable {
 #endif
 } ResourceManager;
 
-ResourceManager gResourceManager;
+static ResourceManager gResourceManager;
 
+#if 0
 static void refreshStaticBufferCache(void) {
   if (gResourceManager.isGPUStaticBufferCacheDirty) {
     if (gResourceManager.gpuStaticBufferCache) {
@@ -87,52 +154,46 @@ static void refreshStaticBufferCache(void) {
     gResourceManager.isGPUStaticBufferCacheDirty = false;
   }
 }
+#endif
 
 void initResourceManager(void) {
-  int cpuStaticBufferSize = sizeof(Vertex) * RESERVED_NUM_VERTICES +
-                            sizeof(VertexIndex) * RESERVED_NUM_INDICES;
-
-  gResourceManager.memSize = sizeof(SubMesh) * RESERVED_NUM_SUBMESHES +
-                             sizeof(Mesh) * RESERVED_NUM_MESHES +
-                             cpuStaticBufferSize;
-  gResourceManager.memBase = MMALLOC_ARRAY(uint8_t, gResourceManager.memSize);
-  uint8_t *p = (uint8_t *)gResourceManager.memBase;
-  gResourceManager.staticSubMeshes = (SubMesh *)p;
-  p += sizeof(SubMesh) * RESERVED_NUM_SUBMESHES;
-  gResourceManager.staticMeshes = (Mesh *)p;
-  p += sizeof(Mesh) * RESERVED_NUM_MESHES;
-
-  gResourceManager.cpuStaticBufferBase = p;
-  gResourceManager.cpuStaticBufferSize = cpuStaticBufferSize;
-  gResourceManager.cpuStaticVertexBuffer =
-      (Vertex *)gResourceManager.cpuStaticBufferBase;
-  gResourceManager.cpuStaticIndexBuffer =
-      (VertexIndex *)((Vertex *)gResourceManager.cpuStaticBufferBase +
-                      RESERVED_NUM_VERTICES);
-
-  p += cpuStaticBufferSize;
+  initMeshStorage(&gResourceManager.meshStorage, 10000);
+  initVertexStorage(&gResourceManager.vertexStorage, 200000, 800000);
 }
 
 void destroyResourceManager(void) {
-  if (gResourceManager.gpuStaticBufferCache) {
-    destroyBuffer(gResourceManager.gpuStaticBufferCache);
-  }
-  MFREE(gResourceManager.memBase);
+  destroyVertexStorage(&gResourceManager.vertexStorage);
+  destroyMeshStorage(&gResourceManager.meshStorage);
 }
 
-Vertex *allocateCPUVertexBuffer(void);
-VertexIndex *allocateCPUIndexBuffer(void);
-
-SubMesh *allocateSubMesh(void) {
-  ASSERT(gResourceManager.numStaticSubMeshes < RESERVED_NUM_SUBMESHES);
-  return &gResourceManager
-              .staticSubMeshes[gResourceManager.numStaticSubMeshes++];
+Mesh *allocateStaticMesh(int numSubMeshes) {
+  Mesh *result = allocateStaticMeshFromStorage(&gResourceManager.meshStorage,
+                                               numSubMeshes);
+  return result;
 }
 
-Mesh *allocateStaticMesh(void) {
-  ASSERT(gResourceManager.numStaticMeshes < RESERVED_NUM_MESHES);
-  return &gResourceManager.staticMeshes[gResourceManager.numStaticMeshes++];
+Vertex *allocateVertices(int numVertices) {
+  Vertex *result =
+      allocateVerticesFromStorage(&gResourceManager.vertexStorage, numVertices);
+  return result;
 }
+
+VertexIndex *allocateIndices(int numIndices) {
+  VertexIndex *result =
+      allocateIndicesFromStorage(&gResourceManager.vertexStorage, numIndices);
+  return result;
+}
+
+// SubMesh *allocateSubMesh(void) {
+//   ASSERT(gResourceManager.numStaticSubMeshes < RESERVED_NUM_SUBMESHES);
+//   return &gResourceManager
+//               .staticSubMeshes[gResourceManager.numStaticSubMeshes++];
+// }
+
+// Mesh *allocateStaticMesh(void) {
+//   ASSERT(gResourceManager.numStaticMeshes < RESERVED_NUM_MESHES);
+//   return &gResourceManager.staticMeshes[gResourceManager.numStaticMeshes++];
+// }
 
 // hash...ed..?
 

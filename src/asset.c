@@ -324,7 +324,6 @@ void loadGLTFModel(const char *path, Model *model) {
   model->numMeshes = castUsizeI32(gltf->meshes_count);
   model->meshes = MMALLOC_ARRAY(Mesh *, model->numMeshes);
   for (int i = 0; i < model->numMeshes; ++i) {
-    model->meshes[i] = allocateStaticMesh();
   }
 
   int numVertices = 0;
@@ -332,9 +331,8 @@ void loadGLTFModel(const char *path, Model *model) {
   for (cgltf_size meshIndex = 0; meshIndex < gltf->meshes_count; ++meshIndex) {
     cgltf_mesh *gltfMesh = &gltf->meshes[meshIndex];
 
-    Mesh *mesh = model->meshes[meshIndex];
-    mesh->numSubMeshes = castUsizeI32(gltfMesh->primitives_count);
-    mesh->subMeshes = MMALLOC_ARRAY(SubMesh, mesh->numSubMeshes);
+    Mesh *mesh = model->meshes[meshIndex] =
+        allocateStaticMesh(castUsizeI32(gltfMesh->primitives_count));
 
     for (cgltf_size primIndex = 0; primIndex < gltfMesh->primitives_count;
          ++primIndex) {
@@ -361,20 +359,11 @@ void loadGLTFModel(const char *path, Model *model) {
     }
   }
 
-  model->bufferSize =
-      castUsizeI32(castI32Usize(numVertices) * sizeof(Vertex) +
-                   castI32Usize(numIndices) * sizeof(VertexIndex));
-  model->bufferBase = MMALLOC_ARRAY(uint8_t, model->bufferSize);
   model->numVertices = numVertices;
-  model->vertexBase = (Vertex *)model->bufferBase;
+  model->vertexBase = allocateVertices(model->numVertices);
   model->numIndices = numIndices;
+  model->indexBase = allocateIndices(model->numIndices);
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wcast-align"
-  model->indexBase =
-      (VertexIndex *)((uint8_t *)model->bufferBase +
-                      castI32Usize(numVertices) * sizeof(Vertex));
-#pragma clang diagnostic pop
   Vertex *vertexBuffer = model->vertexBase;
   VertexIndex *indexBuffer = model->indexBase;
 

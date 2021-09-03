@@ -92,15 +92,10 @@ int main(UNUSED int argc, UNUSED char **argv) {
   }
 
   destroyEditor(&editor);
-
   destroyGUI();
-
   destroyResourceManager();
-
   destroyRenderer();
-
   destroyApp();
-
   destroyAssetLoader();
 
   return 0;

@@ -1,15 +1,17 @@
 #pragma once
 #include "util.h"
 
-FORWARD_DECL(SubMesh);
 FORWARD_DECL(Mesh);
+FORWARD_DECL(Vertex);
+typedef uint32_t VertexIndex;
 
 C_INTERFACE_BEGIN
 
 void initResourceManager(void);
 void destroyResourceManager(void);
 
-SubMesh *allocateSubMesh(void);
-Mesh *allocateStaticMesh(void);
+Mesh *allocateStaticMesh(int numSubMeshes);
+Vertex *allocateVertices(int numVertices);
+VertexIndex *allocateIndices(int numIndices);
 
 C_INTERFACE_END

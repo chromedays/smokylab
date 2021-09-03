@@ -386,10 +386,6 @@ typedef struct _Model {
   int numScenes;
   Scene *scenes;
 
-  // Combined CPU buffer (Vertex buffer + Index buffer)
-  int bufferSize;
-  void *bufferBase;
-
   int numVertices;
   Vertex *vertexBase;
   int numIndices;

@@ -574,7 +574,6 @@ void destroyModel(Model *model) {
 
   COM_RELEASE(model->gpuIndexBuffer);
   COM_RELEASE(model->gpuVertexBuffer);
-  MFREE(model->bufferBase);
 
   for (int i = 0; i < model->numMeshes; ++i) {
     MFREE(model->meshes[i]->subMeshes);
