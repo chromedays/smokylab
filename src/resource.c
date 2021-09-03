@@ -34,6 +34,10 @@ typedef struct _TextureHandle {
 } TextureHandle;
 #endif
 
+// TODO:
+// - Test multiple meshes/models
+// - Test multiple vertices/indices buffers
+
 typedef struct _MeshBlock {
   int size;
   struct _MeshBlock *next;
