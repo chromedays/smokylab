@@ -458,6 +458,28 @@ void createBuffer(const BufferDesc *desc, GPUBuffer **buffer) {
   }
 }
 
+void createImmutableVertexBuffer(int numVertices, const Vertex *vertices,
+                                 GPUBuffer **buffer) {
+  BufferDesc desc = {
+      .size = castUsizeI32(numVertices * sizeof(Vertex)),
+      .initialData = vertices,
+      .usage = GPUResourceUsage_IMMUTABLE,
+      .bindFlags = GPUResourceBindBits_VERTEX_BUFFER,
+  };
+  createBuffer(&desc, buffer);
+}
+
+void createImmutableIndexBuffer(int numIndices, const VertexIndex *indices,
+                                GPUBuffer **buffer) {
+  BufferDesc desc = {
+      .size = castUsizeI32(numIndices * sizeof(VertexIndex)),
+      .initialData = indices,
+      .usage = GPUResourceUsage_IMMUTABLE,
+      .bindFlags = GPUResourceBindBits_INDEX_BUFFER,
+  };
+  createBuffer(&desc, buffer);
+}
+
 void destroyBuffer(GPUBuffer *buffer) { COM_RELEASE(buffer); }
 
 void updateBufferData(GPUBuffer *buffer, void *data) {

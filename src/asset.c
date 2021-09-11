@@ -446,22 +446,10 @@ void loadGLTFModel(const char *path, Model *model) {
     }
   }
 
-  createBuffer(
-      &(BufferDesc){
-          .size = numVertices * castUsizeI32(sizeof(Vertex)),
-          .initialData = model->vertexBase,
-          .usage = GPUResourceUsage_IMMUTABLE,
-          .bindFlags = GPUResourceBindBits_VERTEX_BUFFER,
-      },
-      &model->gpuVertexBuffer);
-  createBuffer(
-      &(BufferDesc){
-          .size = numIndices * castUsizeI32(sizeof(VertexIndex)),
-          .initialData = model->indexBase,
-          .usage = GPUResourceUsage_IMMUTABLE,
-          .bindFlags = GPUResourceBindBits_INDEX_BUFFER,
-      },
-      &model->gpuIndexBuffer);
+  createImmutableVertexBuffer(numVertices, model->vertexBase,
+                              &model->gpuVertexBuffer);
+  createImmutableIndexBuffer(numIndices, model->indexBase,
+                             &model->gpuIndexBuffer);
 
   model->numNodes = castUsizeI32(gltf->nodes_count);
   model->nodes = MMALLOC_ARRAY(SceneNode, model->numNodes);
