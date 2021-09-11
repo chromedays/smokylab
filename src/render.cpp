@@ -3,6 +3,7 @@
 #include "asset.h"
 #include "app.h"
 #include "camera.h"
+#include "resource.h"
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Weverything"
 #include <cgltf.h>
@@ -680,6 +681,7 @@ void renderModel(const Model *model) {
   GPUBuffer *drawUniformBuffer = gDrawBuffer;
 
   UINT stride = sizeof(Vertex), offset = 0;
+  // TODO: Check if static mesh/buffer
   gContext->IASetVertexBuffers(0, 1, (ID3D11Buffer **)&model->gpuVertexBuffer,
                                &stride, &offset);
   gContext->IASetIndexBuffer((ID3D11Buffer *)model->gpuIndexBuffer,

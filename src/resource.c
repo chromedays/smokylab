@@ -82,14 +82,14 @@ typedef struct _VertexStorage {
   int numVertices;
   int usedVertices;
   Vertex *vertices;
-  // GPUBuffer *gpuVertexBufferCache;
-  // bool isGPUStaticBufferCacheDirty;
+  GPUBuffer *vertexBufferCache;
+  // bool isVertexBufferCacheDirty;
 
   int numIndices;
   int usedIndices;
   VertexIndex *indices;
-  // GPUBuffer *gpuIndexBufferCache;
-  // bool isGPUStaticBufferCacheDirty;
+  // GPUBuffer *indexBufferCache;
+  // bool isIndexBufferCacheDirty;
 } VertexStorage;
 
 void initVertexStorage(VertexStorage *storage, int reservedNumVertices,
@@ -102,7 +102,9 @@ void initVertexStorage(VertexStorage *storage, int reservedNumVertices,
 }
 
 void destroyVertexStorage(VertexStorage *storage) {
+  // destroyBuffer(storage->indexBufferCache);
   MFREE(storage->indices);
+  // destroyBuffer(storage->vertexBufferCache);
   MFREE(storage->vertices);
 }
 
@@ -187,6 +189,45 @@ VertexIndex *allocateIndices(int numIndices) {
       allocateIndicesFromStorage(&gResourceManager.vertexStorage, numIndices);
   return result;
 }
+
+#if 0
+void refreshStaticBufferCache(void) {
+  VertexStorage *storage = &gResourceManager.vertexStorage;
+
+  if (storage->isVertexBufferCacheDirty) {
+    destroyBuffer(storage->vertexBufferCache);
+    createBuffer(
+        &(BufferDesc){
+            .size = storage->usedVertices * castUsizeI32(sizeof(Vertex)),
+            .initialData = storage->vertices,
+            .usage = GPUResourceUsage_IMMUTABLE,
+            .bindFlags = GPUResourceBindBits_VERTEX_BUFFER,
+        },
+        &storage->vertexBufferCache);
+    // gResourceManager.vertexStorage.isVertexBufferCacheDirty = false;
+  }
+
+  if (storage->isIndexBufferCacheDirty) {
+    destroyBuffer(storage->indexBufferCache);
+    createBuffer(
+        &(BufferDesc){
+            .size = storage->usedIndices * castUsizeI32(sizeof(VertexIndex)),
+            .initialData = storage->indices,
+            .usage = GPUResourceUsage_IMMUTABLE,
+            .bindFlags = GPUResourceBindBits_INDEX_BUFFER,
+        },
+        &storage->indexBufferCache);
+    // storage->isIndexBufferCacheDirty = false;
+  }
+}
+#endif
+
+// GPUStaticBufferCache getStaticBufferCache(void) {
+//   return (GPUStaticBufferCache){
+//       .vertexBuffer = gResourceManager.vertexStorage.vertexBufferCache,
+//       .indexBuffer = gResourceManager.vertexStorage.indexBufferCache,
+//   };
+// }
 
 // SubMesh *allocateSubMesh(void) {
 //   ASSERT(gResourceManager.numStaticSubMeshes < RESERVED_NUM_SUBMESHES);
