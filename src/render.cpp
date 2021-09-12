@@ -595,12 +595,6 @@ void destroyModel(Model *model) {
   }
   MFREE(model->nodes);
 
-  COM_RELEASE(model->gpuIndexBuffer);
-  COM_RELEASE(model->gpuVertexBuffer);
-
-  for (int i = 0; i < model->numMeshes; ++i) {
-    MFREE(model->meshes[i]->subMeshes);
-  }
   MFREE(model->meshes);
 
   MFREE(model->materials);
@@ -671,8 +665,8 @@ static void renderMesh(const Model *model, const Mesh *mesh,
     gContext->PSSetShaderResources(2, ARRAY_SIZE(textureViews), textureViews);
     gContext->PSSetSamplers(2, ARRAY_SIZE(samplers), samplers);
     gContext->DrawIndexed(castI32U32(subMesh->numIndices),
-                          castSsizeU32(subMesh->indices - model->indexBase),
-                          castSsizeI32(subMesh->vertices - model->vertexBase));
+                          subMesh->gpuIndexOffset, subMesh->gpuVertexOffset);
+    // model->indexBaseOffset + subMesh->indexOffset
   }
 }
 
@@ -704,9 +698,10 @@ void renderModel(const Model *model) {
 
   UINT stride = sizeof(Vertex), offset = 0;
   // TODO: Check if static mesh/buffer
-  gContext->IASetVertexBuffers(0, 1, (ID3D11Buffer **)&model->gpuVertexBuffer,
-                               &stride, &offset);
-  gContext->IASetIndexBuffer((ID3D11Buffer *)model->gpuIndexBuffer,
+  GPUStaticBufferCache staticBufferCache = getStaticBufferCache();
+  gContext->IASetVertexBuffers(
+      0, 1, (ID3D11Buffer **)&staticBufferCache.vertexBuffer, &stride, &offset);
+  gContext->IASetIndexBuffer((ID3D11Buffer *)staticBufferCache.indexBuffer,
                              DXGI_FORMAT_R32_UINT, 0);
   gContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 

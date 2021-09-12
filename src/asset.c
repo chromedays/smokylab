@@ -359,13 +359,18 @@ void loadGLTFModel(const char *path, Model *model) {
     }
   }
 
-  model->numVertices = numVertices;
-  model->vertexBase = allocateVertices(model->numVertices);
-  model->numIndices = numIndices;
-  model->indexBase = allocateIndices(model->numIndices);
+  int vertexOffset = 0;
+  int indexOffset = 0;
 
-  Vertex *vertexBuffer = model->vertexBase;
-  VertexIndex *indexBuffer = model->indexBase;
+  model->numVertices = numVertices;
+  model->vertexBase =
+      allocateVertices(model->numVertices, &model->vertexBaseOffset);
+  model->numIndices = numIndices;
+  model->indexBase =
+      allocateIndices(model->numIndices, &model->indexBaseOffset);
+
+  // Vertex *vertexBuffer = model->vertexBase;
+  // VertexIndex *indexBuffer = model->indexBase;
 
   for (cgltf_size meshIndex = 0; meshIndex < gltf->meshes_count; ++meshIndex) {
     cgltf_mesh *gltfMesh = &gltf->meshes[meshIndex];
@@ -377,10 +382,12 @@ void loadGLTFModel(const char *path, Model *model) {
       cgltf_primitive *prim = &gltfMesh->primitives[primIndex];
       SubMesh *subMesh = &mesh->subMeshes[primIndex];
 
-      subMesh->indices = indexBuffer;
-      indexBuffer += subMesh->numIndices;
-      subMesh->vertices = vertexBuffer;
-      vertexBuffer += subMesh->numVertices;
+      subMesh->indices = model->indexBase + indexOffset;
+      subMesh->gpuIndexOffset = model->indexBaseOffset + indexOffset;
+      indexOffset += subMesh->numIndices;
+      subMesh->vertices = model->vertexBase + vertexOffset;
+      subMesh->gpuVertexOffset = model->vertexBaseOffset + vertexOffset;
+      vertexOffset += subMesh->numVertices;
 
       for (cgltf_size i = 0; i < prim->indices->count; ++i) {
         subMesh->indices[i] =
@@ -446,10 +453,7 @@ void loadGLTFModel(const char *path, Model *model) {
     }
   }
 
-  createImmutableVertexBuffer(numVertices, model->vertexBase,
-                              &model->gpuVertexBuffer);
-  createImmutableIndexBuffer(numIndices, model->indexBase,
-                             &model->gpuIndexBuffer);
+  refreshStaticBufferCache();
 
   model->numNodes = castUsizeI32(gltf->nodes_count);
   model->nodes = MMALLOC_ARRAY(SceneNode, model->numNodes);

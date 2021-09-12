@@ -83,13 +83,11 @@ typedef struct _VertexStorage {
   int usedVertices;
   Vertex *vertices;
   GPUBuffer *vertexBufferCache;
-  // bool isVertexBufferCacheDirty;
 
   int numIndices;
   int usedIndices;
   VertexIndex *indices;
-  // GPUBuffer *indexBufferCache;
-  // bool isIndexBufferCacheDirty;
+  GPUBuffer *indexBufferCache;
 } VertexStorage;
 
 void initVertexStorage(VertexStorage *storage, int reservedNumVertices,
@@ -102,9 +100,9 @@ void initVertexStorage(VertexStorage *storage, int reservedNumVertices,
 }
 
 void destroyVertexStorage(VertexStorage *storage) {
-  // destroyBuffer(storage->indexBufferCache);
+  destroyBuffer(storage->indexBufferCache);
   MFREE(storage->indices);
-  // destroyBuffer(storage->vertexBufferCache);
+  destroyBuffer(storage->vertexBufferCache);
   MFREE(storage->vertices);
 }
 
@@ -164,7 +162,7 @@ static void refreshStaticBufferCache(void) {
 
 void initResourceManager(void) {
   initMeshStorage(&gResourceManager.meshStorage, 10000);
-  initVertexStorage(&gResourceManager.vertexStorage, 200000, 800000);
+  initVertexStorage(&gResourceManager.vertexStorage, 600000, 2400000);
 }
 
 void destroyResourceManager(void) {
@@ -178,56 +176,42 @@ Mesh *allocateStaticMesh(int numSubMeshes) {
   return result;
 }
 
-Vertex *allocateVertices(int numVertices) {
+Vertex *allocateVertices(int numVertices, int *offset) {
+  if (offset) {
+    *offset = gResourceManager.vertexStorage.usedVertices;
+  }
   Vertex *result =
       allocateVerticesFromStorage(&gResourceManager.vertexStorage, numVertices);
   return result;
 }
 
-VertexIndex *allocateIndices(int numIndices) {
+VertexIndex *allocateIndices(int numIndices, int *offset) {
+  if (offset) {
+    *offset = gResourceManager.vertexStorage.usedIndices;
+  }
   VertexIndex *result =
       allocateIndicesFromStorage(&gResourceManager.vertexStorage, numIndices);
   return result;
 }
 
-#if 0
 void refreshStaticBufferCache(void) {
   VertexStorage *storage = &gResourceManager.vertexStorage;
 
-  if (storage->isVertexBufferCacheDirty) {
-    destroyBuffer(storage->vertexBufferCache);
-    createBuffer(
-        &(BufferDesc){
-            .size = storage->usedVertices * castUsizeI32(sizeof(Vertex)),
-            .initialData = storage->vertices,
-            .usage = GPUResourceUsage_IMMUTABLE,
-            .bindFlags = GPUResourceBindBits_VERTEX_BUFFER,
-        },
-        &storage->vertexBufferCache);
-    // gResourceManager.vertexStorage.isVertexBufferCacheDirty = false;
-  }
+  destroyBuffer(storage->vertexBufferCache);
+  createImmutableVertexBuffer(storage->usedVertices, storage->vertices,
+                              &storage->vertexBufferCache);
 
-  if (storage->isIndexBufferCacheDirty) {
-    destroyBuffer(storage->indexBufferCache);
-    createBuffer(
-        &(BufferDesc){
-            .size = storage->usedIndices * castUsizeI32(sizeof(VertexIndex)),
-            .initialData = storage->indices,
-            .usage = GPUResourceUsage_IMMUTABLE,
-            .bindFlags = GPUResourceBindBits_INDEX_BUFFER,
-        },
-        &storage->indexBufferCache);
-    // storage->isIndexBufferCacheDirty = false;
-  }
+  destroyBuffer(storage->indexBufferCache);
+  createImmutableIndexBuffer(storage->usedIndices, storage->indices,
+                             &storage->indexBufferCache);
 }
-#endif
 
-// GPUStaticBufferCache getStaticBufferCache(void) {
-//   return (GPUStaticBufferCache){
-//       .vertexBuffer = gResourceManager.vertexStorage.vertexBufferCache,
-//       .indexBuffer = gResourceManager.vertexStorage.indexBufferCache,
-//   };
-// }
+GPUStaticBufferCache getStaticBufferCache(void) {
+  return (GPUStaticBufferCache){
+      .vertexBuffer = gResourceManager.vertexStorage.vertexBufferCache,
+      .indexBuffer = gResourceManager.vertexStorage.indexBufferCache,
+  };
+}
 
 // SubMesh *allocateSubMesh(void) {
 //   ASSERT(gResourceManager.numStaticSubMeshes < RESERVED_NUM_SUBMESHES);

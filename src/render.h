@@ -332,8 +332,10 @@ typedef struct _Material {
 
 typedef struct _SubMesh {
   int numVertices;
+  int gpuVertexOffset;
   Vertex *vertices;
   int numIndices;
+  int gpuIndexOffset;
   VertexIndex *indices;
 
   int material;
@@ -391,12 +393,11 @@ typedef struct _Model {
   Scene *scenes;
 
   int numVertices;
+  int vertexBaseOffset;
   Vertex *vertexBase;
   int numIndices;
+  int indexBaseOffset;
   VertexIndex *indexBase;
-
-  GPUBuffer *gpuVertexBuffer;
-  GPUBuffer *gpuIndexBuffer;
 } Model;
 
 void destroyModel(Model *model);

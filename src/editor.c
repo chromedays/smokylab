@@ -12,15 +12,19 @@ void initEditor(Editor *editor) {
   initCameraLookingAtTarget(&editor->debugCamera, float3(-5, 1, 0),
                             float3(-5, 1.105f, -1));
 
-  editor->model = MMALLOC(Model);
-  loadGLTFModel(DEFAULT_MODEL, editor->model);
+  editor->models[0] = MMALLOC(Model);
+  loadGLTFModel("models/Sponza", editor->models[0]);
+  editor->models[1] = MMALLOC(Model);
+  loadGLTFModel("models/FlightHelmet", editor->models[1]);
 
   editor->focusedCamera = &editor->sceneCamera;
 }
 
 void destroyEditor(Editor *editor) {
-  destroyModel(editor->model);
-  MFREE(editor->model);
+  for (int i = 0; i < ARRAY_SIZE(editor->models); ++i) {
+    destroyModel(editor->models[i]);
+    MFREE(editor->models[i]);
+  }
 }
 
 void updateEditor(UNUSED Editor *editor) {
@@ -40,9 +44,11 @@ void renderEditor(const Editor *editor) {
   setCamera(editor->focusedCamera);
   setViewportByAppWindow();
 
-  if (editor->model) {
-    setDefaultModelRenderStates(float4(0, 0, 0, 0));
-    renderModel(editor->model);
+  setDefaultModelRenderStates(float4(0, 0, 0, 0));
+  for (int i = 0; i < ARRAY_SIZE(editor->models); ++i) {
+    if (editor->models[i]) {
+      renderModel(editor->models[i]);
+    }
   }
 
   renderCameraVolume(&editor->sceneCamera);

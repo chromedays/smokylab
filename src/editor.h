@@ -8,7 +8,7 @@ typedef struct _Editor {
   Camera debugCamera;
   Camera *focusedCamera;
 
-  Model *model;
+  Model *models[2];
 } Editor;
 
 C_INTERFACE_BEGIN
