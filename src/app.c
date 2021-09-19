@@ -14,7 +14,7 @@ App gApp;
 
 void initApp(const char *title, int windowWidth, int windowHeight) {
 #ifdef _WIN32
-  SetProcessDPIAware();
+  // SetProcessDPIAware();
 #endif
 
   SDL_Init(SDL_INIT_VIDEO);

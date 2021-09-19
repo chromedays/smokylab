@@ -27,6 +27,7 @@ target_link_libraries(
   PUBLIC SDL2main.lib
   PUBLIC gdi32.lib
   PUBLIC Shell32.lib
+  PUBLIC d3d12.lib
   PUBLIC d3d11.lib
   PUBLIC dxgi.lib
   PUBLIC dxguid.lib

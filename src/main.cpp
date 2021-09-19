@@ -18,7 +18,7 @@
 int main(UNUSED int argc, UNUSED char **argv) {
   // Initialize asset paths
   initAssetLoaderFromConfigFile();
-  initApp("Smokylab", 1280, 720);
+  initApp("Smokylab", 1920, 1080);
   initRenderer();
   initResourceManager();
 
@@ -58,15 +58,6 @@ int main(UNUSED int argc, UNUSED char **argv) {
 
   initGUI();
   GUI gui = {
-      .exposure = 1,
-      .depthVisualizedRangeFar = 15,
-      .lightAngle = 30,
-      .lightIntensity = 10,
-      .globalOpacity = 0.4f,
-      .ssaoNumSamples = 10,
-      .ssaoRadius = 0.5f,
-      .ssaoScaleFactor = 1,
-      .ssaoContrastFactor = 1,
       .cam = &cam,
       .models = NULL,
       .numModels = 0,
@@ -84,11 +75,12 @@ int main(UNUSED int argc, UNUSED char **argv) {
     updateEditor(&editor);
     updateGUI(&gui);
 
-    renderEditor(&editor);
-
-    renderGUI();
-
-    swapBuffers();
+    beginRender();
+    {
+      renderEditor(&editor);
+      renderGUI();
+    }
+    endRender();
   }
 
   destroyEditor(&editor);

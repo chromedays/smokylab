@@ -168,6 +168,8 @@ FORWARD_DECL(GPUSampler);
 typedef struct _Renderer {
   GPUDevice *device;
   GPUDeviceContext *deviceContext;
+  bool vsync;
+  float renderTime;
 } Renderer;
 
 C_INTERFACE_BEGIN
@@ -176,6 +178,9 @@ extern Renderer gRenderer;
 
 void initRenderer(void);
 void destroyRenderer(void);
+
+void beginRender(void);
+void endRender(void);
 
 void setViewport(float x, float y, float w, float h);
 void setDefaultModelRenderStates(Float4 clearColor);

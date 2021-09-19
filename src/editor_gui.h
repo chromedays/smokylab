@@ -11,19 +11,6 @@ FORWARD_DECL(Camera);
 typedef struct _GUI {
   bool openMenu;
 
-  float exposure;
-  bool renderWireframedBackface;
-  bool renderDepthBuffer;
-  float depthVisualizedRangeFar;
-  float lightAngle;
-  float lightIntensity;
-  bool overrideOpacity;
-  float globalOpacity;
-  int ssaoNumSamples;
-  float ssaoRadius;
-  float ssaoScaleFactor;
-  float ssaoContrastFactor;
-
   Camera *cam;
 
   Model **models;

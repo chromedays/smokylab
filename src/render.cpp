@@ -12,6 +12,7 @@
 #include <SDL2/SDL_syswm.h>
 #include <d3d11shader.h>
 #include <d3d11_1.h>
+#include <d3d12.h>
 #include <dxgidebug.h>
 #include <d3dcompiler.h>
 #pragma clang diagnostic pop
@@ -45,6 +46,11 @@ static GPUBuffer *gCameraVolumeBuffer;
 
 static ShaderProgram gForwardPBRProgram;
 static ShaderProgram gDebugProgram;
+
+static ID3D12Device *gDummyDeviceForFixedGPUClock;
+static ID3D11Query *gProfilerDisjointQuery;
+static ID3D11Query *gProfilerTimestampBeginQuery;
+static ID3D11Query *gProfilerTimestampEndQuery;
 
 static D3D11_USAGE toNativeUsage(GPUResourceUsage usage) {
   return (D3D11_USAGE)usage;
@@ -111,7 +117,37 @@ static HWND getWin32WindowHandle(SDL_Window *window) {
   return hwnd;
 }
 
+static bool isDeveloperModeEnabled(void) {
+  HKEY hKey;
+  HRESULT err = RegOpenKeyExW(
+      HKEY_LOCAL_MACHINE,
+      L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\AppModelUnlock", 0,
+      KEY_READ, &hKey);
+  if (err != ERROR_SUCCESS) {
+    return false;
+  }
+  DWORD value = 0;
+  DWORD dwordSize = sizeof(DWORD);
+  err = RegQueryValueExW(hKey, L"AllowDevelopmentWithoutDevLicense", 0, NULL,
+                         (LPBYTE)(&value), &dwordSize);
+  RegCloseKey(hKey);
+  if (err != ERROR_SUCCESS) {
+    return false;
+  }
+  return value != 0;
+}
+
 void initRenderer(void) {
+  if (isDeveloperModeEnabled()) {
+    HR_ASSERT(D3D12CreateDevice(NULL, D3D_FEATURE_LEVEL_12_0,
+                                IID_PPV_ARGS(&gDummyDeviceForFixedGPUClock)));
+    HR_ASSERT(gDummyDeviceForFixedGPUClock->SetStablePowerState(TRUE));
+    COM_RELEASE(gDummyDeviceForFixedGPUClock);
+  } else {
+    LOG("Warning: Developer mode is not enabled. GPU profiler result will be "
+        "inconsistent");
+  }
+
   int windowWidth, windowHeight;
   SDL_GetWindowSize(gApp.window, &windowWidth, &windowHeight);
 
@@ -274,6 +310,14 @@ void initRenderer(void) {
 
   loadProgram("forward_pbr", &gForwardPBRProgram);
   loadProgram("debug", &gDebugProgram);
+
+  D3D11_QUERY_DESC queryDesc = {};
+  queryDesc.Query = D3D11_QUERY_TIMESTAMP_DISJOINT;
+  HR_ASSERT(gDevice->CreateQuery(&queryDesc, &gProfilerDisjointQuery));
+
+  queryDesc.Query = D3D11_QUERY_TIMESTAMP;
+  HR_ASSERT(gDevice->CreateQuery(&queryDesc, &gProfilerTimestampBeginQuery));
+  HR_ASSERT(gDevice->CreateQuery(&queryDesc, &gProfilerTimestampEndQuery));
 }
 
 void destroyRenderer(void) {
@@ -319,6 +363,42 @@ void destroyRenderer(void) {
     COM_RELEASE(debug);
   }
 #endif
+
+  if (gDummyDeviceForFixedGPUClock) {
+    HR_ASSERT(gDummyDeviceForFixedGPUClock->SetStablePowerState(FALSE));
+    COM_RELEASE(gDummyDeviceForFixedGPUClock);
+  }
+}
+
+void beginRender(void) {
+  gContext->Begin(gProfilerDisjointQuery);
+  gContext->End(gProfilerTimestampBeginQuery);
+}
+
+void endRender(void) {
+  gContext->End(gProfilerTimestampEndQuery);
+  gContext->End(gProfilerDisjointQuery);
+
+  while (gContext->GetData(gProfilerDisjointQuery, NULL, 0, 0) == S_FALSE) {
+    Sleep(1); // Wait a bit, but give other threads a chance to run
+  }
+
+  D3D11_QUERY_DATA_TIMESTAMP_DISJOINT disjoint;
+
+  HR_ASSERT(gContext->GetData(gProfilerDisjointQuery, &disjoint,
+                              sizeof(disjoint), 0));
+  ASSERT(!disjoint.Disjoint);
+  UINT64 startTime;
+  HR_ASSERT(gContext->GetData(gProfilerTimestampBeginQuery, &startTime,
+                              sizeof(startTime), 0));
+  UINT64 endTime;
+  HR_ASSERT(gContext->GetData(gProfilerTimestampEndQuery, &endTime,
+                              sizeof(endTime), 0));
+  gRenderer.renderTime =
+      (float)(endTime - startTime) / (float)disjoint.Frequency;
+
+  UINT syncInterval = gRenderer.vsync ? 1 : 0;
+  gSwapChain->Present(syncInterval, 0);
 }
 
 void setViewport(float x, float y, float w, float h) {
@@ -348,8 +428,6 @@ void setDefaultModelRenderStates(Float4 clearColor) {
 
   useProgram(&gForwardPBRProgram);
 }
-
-void swapBuffers(void) { gSwapChain->Present(1, 0); }
 
 void createProgram(ShaderProgram *program, int vertSrcSize, void *vertSrc,
                    int fragSrcSize, void *fragSrc) {
@@ -713,6 +791,12 @@ void renderModel(const Model *model) {
     }
   }
 }
+
+void beginGPUProfiler(void) {}
+
+void gpuProfilerTimeStamp(void) {}
+
+void endGPUProfiler(void) {}
 
 void setCamera(const Camera *camera) {
   ViewUniforms viewUniforms = {

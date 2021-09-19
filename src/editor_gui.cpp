@@ -69,33 +69,14 @@ void destroyGUI(void) {
 void handleGUIEvent(SDL_Event *event) { ImGui_ImplSDL2_ProcessEvent(event); }
 
 static void guiDebugSettings(GUI *gui, UNUSED void *userData) {
-  ImGui::Checkbox("Backface Wireframe", &gui->renderWireframedBackface);
-  ImGui::Checkbox("Show Depth", &gui->renderDepthBuffer);
-  ImGui::SliderFloat("##Visualized Depth Far Range",
-                     &gui->depthVisualizedRangeFar, 1, 500);
-  ImGui::SameLine();
-  ImGui::TextWrapped("Visualized Depth Far Range");
-  ImGui::Text("Cam Position: (%.3f, %.3f, %.3f)", (double)gui->cam->pos.x,
-              (double)gui->cam->pos.y, (double)gui->cam->pos.z);
-  ImGui::Text("Cam Yaw/Pitch: (%.3f, %.3f)", (double)gui->cam->yaw,
-              (double)gui->cam->pitch);
-  ImGui::Checkbox("Override Opacity", &gui->overrideOpacity);
-  ImGui::SliderFloat("Global Opacity", &gui->globalOpacity, 0.1f, 0.9f);
+  ImGui::Text("Render Time: %f", gRenderer.renderTime);
 }
 
 static void guiRenderSettings(GUI *gui, UNUSED void *userData) {
-  ImGui::SliderFloat("Light Angle", &gui->lightAngle, 0, 360, "%.3f",
-                     ImGuiSliderFlags_AlwaysClamp);
-  ImGui::SliderFloat("Light Intensity", &gui->lightIntensity, 1, 100);
-  ImGui::SliderInt("SSAO Sample Count", &gui->ssaoNumSamples, 1, 20);
-  ImGui::SliderFloat("SSAO Radius", &gui->ssaoRadius, 0.01f, 10);
-  ImGui::SliderFloat("SSAO Scale Factor", &gui->ssaoScaleFactor, 1, 10);
-  ImGui::SliderFloat("SSAO Contrast Factor", &gui->ssaoContrastFactor, 1, 10);
+  ImGui::Checkbox("Enable VSync", &gRenderer.vsync);
 }
 
-static void guiPostProcessingMenu(GUI *gui, UNUSED void *userdata) {
-  ImGui::SliderFloat("Exposure", &gui->exposure, 0.1f, 10.f);
-}
+static void guiPostProcessingMenu(GUI *gui, UNUSED void *userdata) {}
 
 static void guiSceneNodeTree(const Model *model, const SceneNode *node) {
   if (node->numChildNodes > 0) {
@@ -218,8 +199,8 @@ void updateGUI(GUI *gui) {
     MainMenuContext mmctx = {};
     pushMainMenu(&mmctx, "Debug Settings", guiDebugSettings);
     pushMainMenu(&mmctx, "Render Settings", guiRenderSettings);
-    pushMainMenu(&mmctx, "Post Processing", guiPostProcessingMenu);
-    pushMainMenu(&mmctx, "Scene", guiSceneMenu);
+    // pushMainMenu(&mmctx, "Post Processing", guiPostProcessingMenu);
+    // pushMainMenu(&mmctx, "Scene", guiSceneMenu);
     renderMainMenues(&mmctx, gui);
 
     // ImGui::Text("Loading %c", "|/-\\"[(int)(ImGui::GetTime() / 0.05) & 3]);
