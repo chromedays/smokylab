@@ -138,6 +138,8 @@ static bool isDeveloperModeEnabled(void) {
 }
 
 void initRenderer(void) {
+  ASSERT(!gRenderer.valid);
+
   if (isDeveloperModeEnabled()) {
     HR_ASSERT(D3D12CreateDevice(NULL, D3D_FEATURE_LEVEL_12_0,
                                 IID_PPV_ARGS(&gDummyDeviceForFixedGPUClock)));
@@ -309,9 +311,9 @@ void initRenderer(void) {
   createBuffer(&bufferDesc, &gCameraVolumeBuffer);
 
   gForwardPBRProgram = loadProgram("forward_pbr");
-  ASSERT(gForwardPBRProgram.result.valid);
+  ASSERT(gForwardPBRProgram.valid);
   gDebugProgram = loadProgram("debug");
-  ASSERT(gDebugProgram.result.valid);
+  ASSERT(gDebugProgram.valid);
 
   D3D11_QUERY_DESC queryDesc = {};
   queryDesc.Query = D3D11_QUERY_TIMESTAMP_DISJOINT;
@@ -320,9 +322,13 @@ void initRenderer(void) {
   queryDesc.Query = D3D11_QUERY_TIMESTAMP;
   HR_ASSERT(gDevice->CreateQuery(&queryDesc, &gProfilerTimestampBeginQuery));
   HR_ASSERT(gDevice->CreateQuery(&queryDesc, &gProfilerTimestampEndQuery));
+
+  gRenderer.valid = true;
 }
 
 void destroyRenderer(void) {
+  ASSERT(gRenderer.valid);
+
   destroyProgram(&gDebugProgram);
   destroyProgram(&gForwardPBRProgram);
 
@@ -370,14 +376,20 @@ void destroyRenderer(void) {
     HR_ASSERT(gDummyDeviceForFixedGPUClock->SetStablePowerState(FALSE));
     COM_RELEASE(gDummyDeviceForFixedGPUClock);
   }
+
+  gRenderer.valid = false;
 }
 
 void beginRender(void) {
+  ASSERT(gContext);
+
   gContext->Begin(gProfilerDisjointQuery);
   gContext->End(gProfilerTimestampBeginQuery);
 }
 
 void endRender(void) {
+  ASSERT(gContext);
+
   gContext->End(gProfilerTimestampEndQuery);
   gContext->End(gProfilerDisjointQuery);
 
@@ -404,6 +416,8 @@ void endRender(void) {
 }
 
 void setViewport(float x, float y, float w, float h) {
+  ASSERT(gContext);
+
   D3D11_VIEWPORT viewport = {
       .TopLeftX = x,
       .TopLeftY = y,
@@ -416,6 +430,8 @@ void setViewport(float x, float y, float w, float h) {
 }
 
 void setDefaultModelRenderStates(Float4 clearColor) {
+  ASSERT(gContext);
+
   gContext->OMSetRenderTargets(1, &gSwapChainRTV, gSwapChainDSV);
   gContext->ClearRenderTargetView(gSwapChainRTV, (FLOAT *)&clearColor);
   gContext->ClearDepthStencilView(gSwapChainDSV, D3D11_CLEAR_DEPTH, 0, 0);
@@ -431,16 +447,21 @@ void setDefaultModelRenderStates(Float4 clearColor) {
   useProgram(&gForwardPBRProgram);
 }
 
-ShaderProgram createProgram(int vertSrcSize, void *vertSrc, int fragSrcSize,
-                            void *fragSrc) {
+ShaderProgram createProgram(const ShaderProgramDesc *desc) {
+  ASSERT(gDevice);
 
   ShaderProgram program = {};
 
-  HR_ASSERT(gDevice->CreateVertexShader(vertSrc, castI32U32(vertSrcSize), NULL,
+  void *vertexShaderSource = desc->vertexShaderSource;
+  SIZE_T vertexShaderSourceSize = castI32Usize(desc->vertexShaderSourceSize);
+
+  HR_ASSERT(gDevice->CreateVertexShader(vertexShaderSource,
+                                        vertexShaderSourceSize, NULL,
                                         (ID3D11VertexShader **)&program.vert));
 
   ID3D11ShaderReflection *refl;
-  HR_ASSERT(D3DReflect(vertSrc, castI32U32(vertSrcSize), IID_PPV_ARGS(&refl)));
+  HR_ASSERT(D3DReflect(vertexShaderSource, vertexShaderSourceSize,
+                       IID_PPV_ARGS(&refl)));
 
   D3D11_SHADER_DESC shaderDesc;
   HR_ASSERT(refl->GetDesc(&shaderDesc));
@@ -500,33 +521,45 @@ ShaderProgram createProgram(int vertSrcSize, void *vertSrc, int fragSrcSize,
   }
 
   HR_ASSERT(gDevice->CreateInputLayout(
-      inputAttribs, shaderDesc.InputParameters, vertSrc,
-      castI32U32(vertSrcSize), (ID3D11InputLayout **)&program.inputLayout));
+      inputAttribs, shaderDesc.InputParameters, vertexShaderSource,
+      vertexShaderSourceSize, (ID3D11InputLayout **)&program.inputLayout));
 
   MFREE(inputAttribs);
 
-  HR_ASSERT(gDevice->CreatePixelShader(fragSrc, castI32U32(fragSrcSize), NULL,
+  void *fragmentShaderSource = desc->fragmentShaderSource;
+  SIZE_T fragmentShaderSourceSize =
+      castI32Usize(desc->fragmentShaderSourceSize);
+
+  HR_ASSERT(gDevice->CreatePixelShader(fragmentShaderSource,
+                                       fragmentShaderSourceSize, NULL,
                                        (ID3D11PixelShader **)&program.frag));
 
-  program.result.valid = true;
+  program.valid = true;
   return program;
 }
 
 void destroyProgram(ShaderProgram *program) {
+  ASSERT(program->valid);
+
   COM_RELEASE(program->frag);
   COM_RELEASE(program->vert);
   COM_RELEASE(program->inputLayout);
 
-  *program = {};
+  program->valid = false;
 }
 
 void useProgram(const ShaderProgram *program) {
+  ASSERT(gContext);
+  ASSERT(program->valid);
+
   gContext->IASetInputLayout((ID3D11InputLayout *)program->inputLayout);
   gContext->VSSetShader((ID3D11VertexShader *)program->vert, NULL, 0);
   gContext->PSSetShader((ID3D11PixelShader *)program->frag, NULL, 0);
 }
 
 void createBuffer(const BufferDesc *desc, GPUBuffer **buffer) {
+  ASSERT(gDevice);
+
   D3D11_BUFFER_DESC bufferDesc = {
       .ByteWidth = castI32U32(desc->size),
       .Usage = toNativeUsage(desc->usage),
@@ -570,10 +603,12 @@ void createImmutableIndexBuffer(int numIndices, const VertexIndex *indices,
 void destroyBuffer(GPUBuffer *buffer) { COM_RELEASE(buffer); }
 
 void updateBufferData(GPUBuffer *buffer, void *data) {
+  ASSERT(gContext);
   gContext->UpdateSubresource((ID3D11Buffer *)buffer, 0, NULL, data, 0, 0);
 }
 
 void bindBuffers(int numBuffers, GPUBuffer **buffers) {
+  ASSERT(gContext);
   gContext->VSSetConstantBuffers(0, castI32U32(numBuffers),
                                  (ID3D11Buffer **)buffers);
   gContext->PSSetConstantBuffers(0, castI32U32(numBuffers),
@@ -582,6 +617,9 @@ void bindBuffers(int numBuffers, GPUBuffer **buffers) {
 
 void createTexture2D(const TextureDesc *desc, GPUTexture2D **texture,
                      GPUTextureView **textureView) {
+  ASSERT(gDevice);
+  ASSERT(gContext);
+
   D3D11_TEXTURE2D_DESC textureDesc = {
       .Width = castI32U32(desc->width),
       .Height = castI32U32(desc->height),
@@ -655,6 +693,8 @@ void createTexture2D(const TextureDesc *desc, GPUTexture2D **texture,
 }
 
 void createSampler(const SamplerDesc *desc, GPUSampler **sampler) {
+  ASSERT(gContext);
+
   D3D11_SAMPLER_DESC d3d11SamplerDesc = {
       .Filter = toNativeFilter(desc->filter),
       .AddressU = toNativeTextureAddressMode(desc->addressMode.u),
@@ -703,6 +743,7 @@ void destroyModel(Model *model) {
 static void renderMesh(const Model *model, const Mesh *mesh,
                        UNUSED GPUBuffer *drawUniformBuffer,
                        GPUBuffer *materialUniformBuffer) {
+  ASSERT(gContext);
 
   for (int subMeshIndex = 0; subMeshIndex < mesh->numSubMeshes;
        ++subMeshIndex) {
@@ -760,6 +801,8 @@ static void renderMesh(const Model *model, const Mesh *mesh,
 static void renderSceneNode(const Model *model, const SceneNode *node,
                             GPUBuffer *drawUniformBuffer,
                             GPUBuffer *materialUniformBuffer) {
+  ASSERT(gRenderer.valid);
+
   if (node->mesh >= 0) {
     DrawUniforms drawUniforms = {};
     drawUniforms.modelMat = node->worldTransform.matrix;
@@ -780,6 +823,8 @@ static void renderSceneNode(const Model *model, const SceneNode *node,
 }
 
 void renderModel(const Model *model) {
+  ASSERT(gContext);
+
   GPUBuffer *materialUniformBuffer = gMaterialBuffer;
   GPUBuffer *drawUniformBuffer = gDrawBuffer;
 
@@ -828,6 +873,8 @@ void renderCameraVolume(const Camera *camera) {
   if (gViewCamera == camera) {
     return;
   }
+
+  ASSERT(gContext);
 
   float halfFovRad = degToRad(camera->verticalFovDeg * 0.5f);
 

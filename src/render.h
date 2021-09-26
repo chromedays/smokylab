@@ -166,6 +166,7 @@ FORWARD_DECL(GPUBuffer);
 FORWARD_DECL(GPUSampler);
 
 typedef struct _Renderer {
+  bool valid;
   GPUDevice *device;
   GPUDeviceContext *deviceContext;
   bool vsync;
@@ -187,14 +188,20 @@ void setDefaultModelRenderStates(Float4 clearColor);
 void swapBuffers(void);
 
 typedef struct _ShaderProgram {
-  Result result;
+  bool valid;
   GPUVertexShader *vert;
   GPUVertexLayout *inputLayout;
   GPUFragmentShader *frag;
 } ShaderProgram;
 
-ShaderProgram createProgram(int vertSrcSize, void *vertSrc, int fragSrcSize,
-                            void *fragSrc);
+typedef struct _ShaderProgramDesc {
+  int vertexShaderSourceSize;
+  void *vertexShaderSource;
+  int fragmentShaderSourceSize;
+  void *fragmentShaderSource;
+} ShaderProgramDesc;
+
+ShaderProgram createProgram(const ShaderProgramDesc *desc);
 void destroyProgram(ShaderProgram *program);
 void useProgram(const ShaderProgram *program);
 

@@ -106,16 +106,6 @@
 
 C_INTERFACE_BEGIN
 
-typedef enum _ErrorCode {
-  ErrorCode_SuccessOrUnknown = 0,
-
-} ErrorCode;
-
-typedef struct _Result {
-  bool valid;
-  ErrorCode errorCode;
-} Result;
-
 inline uint32_t castI32U32(int32_t value) {
   ASSERT(value >= 0);
   return (uint32_t)value;

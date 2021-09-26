@@ -91,8 +91,12 @@ ShaderProgram loadProgram(const char *baseName) {
   LOG("Opening fragment shader at %s", fragPath.buf);
   readFile(&fragPath, &fragSrc, &fragSrcSize);
 
-  ShaderProgram program =
-      createProgram(vertSrcSize, vertSrc, fragSrcSize, fragSrc);
+  ShaderProgram program = createProgram(&(ShaderProgramDesc){
+      .vertexShaderSourceSize = vertSrcSize,
+      .vertexShaderSource = vertSrc,
+      .fragmentShaderSourceSize = fragSrcSize,
+      .fragmentShaderSource = fragSrc,
+  });
 
   MFREE(fragSrc);
   destroyString(&fragPath);
