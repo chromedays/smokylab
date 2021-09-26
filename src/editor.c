@@ -3,8 +3,6 @@
 #include "app.h"
 #include "asset.h"
 
-#define DEFAULT_MODEL "models/Sponza"
-
 void initEditor(Editor *editor) {
   *editor = (Editor){};
   initCameraLookingAtTarget(&editor->sceneCamera, float3(-5, 1, 0),
@@ -27,7 +25,7 @@ void destroyEditor(Editor *editor) {
   }
 }
 
-void updateEditor(UNUSED Editor *editor) {
+void updateEditor(Editor *editor) {
   if (gApp.input.numKeysDown[1]) {
     editor->focusedCamera = &editor->sceneCamera;
   }

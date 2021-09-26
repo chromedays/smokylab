@@ -1,10 +1,10 @@
 #include "resource.h"
 #include "render.h"
 
-#define PUSH_STRUCT(p, type)                                                   \
-  (p = (__typeof__(p))((uint8_t *)p + sizeof(type)), (type *)p)
-#define PUSH_STRUCT_ARRAY(p, type, count)                                      \
-  (p = (__typeof__(p))((uint8_t *)p + sizeof(type) * count), (type *)p)
+// #define PUSH_STRUCT(p, type)                                                   \
+//   (p = (__typeof__(p))((uint8_t *)p + sizeof(type)), (type *)p)
+// #define PUSH_STRUCT_ARRAY(p, type, count)                                      \
+//   (p = (__typeof__(p))((uint8_t *)p + sizeof(type) * count), (type *)p)
 
 #if 0
 typedef struct _GPUBufferSlice {
@@ -52,20 +52,20 @@ typedef struct _MeshStorage {
   MeshBlock *tail;
 } MeshStorage;
 
-void initMeshStorage(MeshStorage *storage, int reservedSizeInBytes) {
+static void initMeshStorage(MeshStorage *storage, int reservedSizeInBytes) {
   *storage = (MeshStorage){};
   storage->size = reservedSizeInBytes;
   storage->mem = MMALLOC_ARRAY(uint8_t, storage->size);
   storage->head = storage->tail = (MeshBlock *)storage->mem;
 }
 
-void destroyMeshStorage(MeshStorage *storage) { MFREE(storage->mem); }
+static void destroyMeshStorage(MeshStorage *storage) { MFREE(storage->mem); }
 
 static Mesh *allocateStaticMeshFromStorage(MeshStorage *storage,
                                            int numSubMeshes) {
   ASSERT(storage->tail);
-  int blockSize =
-      sizeof(MeshBlock) + sizeof(Mesh) + numSubMeshes * sizeof(SubMesh);
+  int blockSize = SSIZEOF32(MeshBlock) + SSIZEOF32(Mesh) +
+                  numSubMeshes * SSIZEOF32(SubMesh);
   ASSERT((storage->used + blockSize) <= storage->size);
   MeshBlock *curr = storage->tail;
   curr->size = blockSize;
@@ -90,8 +90,8 @@ typedef struct _VertexStorage {
   GPUBuffer *indexBufferCache;
 } VertexStorage;
 
-void initVertexStorage(VertexStorage *storage, int reservedNumVertices,
-                       int reservedNumIndices) {
+static void initVertexStorage(VertexStorage *storage, int reservedNumVertices,
+                              int reservedNumIndices) {
   *storage = (VertexStorage){};
   storage->numVertices = reservedNumVertices;
   storage->vertices = MMALLOC_ARRAY(Vertex, storage->numVertices);
@@ -99,7 +99,7 @@ void initVertexStorage(VertexStorage *storage, int reservedNumVertices,
   storage->indices = MMALLOC_ARRAY(VertexIndex, storage->numIndices);
 }
 
-void destroyVertexStorage(VertexStorage *storage) {
+static void destroyVertexStorage(VertexStorage *storage) {
   destroyBuffer(storage->indexBufferCache);
   MFREE(storage->indices);
   destroyBuffer(storage->vertexBufferCache);

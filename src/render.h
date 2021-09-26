@@ -138,7 +138,7 @@ typedef enum _GPUResourceFormat {
   GPUResourceFormat_V408 = 132,
   GPUResourceFormat_SAMPLER_FEEDBACK_MIN_MIP_OPAQUE = 189,
   GPUResourceFormat_SAMPLER_FEEDBACK_MIP_REGION_USED_OPAQUE = 190,
-  GPUResourceFormat_FORCE_UINT = 0xffffffff
+  // GPUResourceFormat_FORCE_UINT = 0xffffffff
 } GPUResourceFormat;
 
 typedef enum _GPUResourceBindBits {

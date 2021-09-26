@@ -531,6 +531,7 @@ void loadGLTFModel(const char *path, Model *model) {
   destroyString(&filePath);
 }
 
+#if 0
 void loadIBLTexture(const char *baseName, int *skyWidth, int *skyHeight,
                     GPUTexture2D **skyTex, GPUTexture2D **irrTex,
                     GPUTextureView **skyTexView, GPUTextureView **irrTexView) {
@@ -579,3 +580,4 @@ void loadIBLTexture(const char *baseName, int *skyWidth, int *skyHeight,
   destroyString(&skyPath);
   destroyString(&basePath);
 }
+#endif

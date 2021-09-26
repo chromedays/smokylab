@@ -13,6 +13,7 @@ void initAssetLoader(const char *assetRootPath, const char *shaderRootPath);
 void destroyAssetLoader(void);
 
 void copyAssetRootPath(String *path);
+void copyShaderRootPath(String *path);
 
 ShaderProgram loadProgram(const char *baseName);
 

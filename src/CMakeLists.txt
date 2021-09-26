@@ -35,6 +35,22 @@ target_link_libraries(
   PUBLIC winmm.lib
   PUBLIC Shcore.lib)
 
+set_property(TARGET smokylab PROPERTY CXX_STANDARD 20)
+set_property(TARGET smokylab PROPERTY C_STANDARD 17)
+
+target_compile_options(
+  smokylab
+  PRIVATE -Wall
+          -Wextra
+          -Wpedantic
+          -Wno-newline-eof
+          -Wno-c++98-compat-pedantic
+          -Wno-gnu-empty-initializer
+          -Wno-old-style-cast
+          -Wno-zero-as-null-pointer-constant
+          -Wno-language-extension-token
+          -Wno-double-promotion)
+
 target_compile_definitions(smokylab PUBLIC _CRT_SECURE_NO_WARNINGS)
 target_compile_definitions(smokylab PUBLIC "$<$<CONFIG:DEBUG>:DEBUG>")
 

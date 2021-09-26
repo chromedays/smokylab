@@ -581,7 +581,7 @@ void createBuffer(const BufferDesc *desc, GPUBuffer **buffer) {
 void createImmutableVertexBuffer(int numVertices, const Vertex *vertices,
                                  GPUBuffer **buffer) {
   BufferDesc desc = {
-      .size = castUsizeI32(numVertices * sizeof(Vertex)),
+      .size = numVertices * SSIZEOF32(Vertex),
       .initialData = vertices,
       .usage = GPUResourceUsage_IMMUTABLE,
       .bindFlags = GPUResourceBindBits_VERTEX_BUFFER,
@@ -592,7 +592,7 @@ void createImmutableVertexBuffer(int numVertices, const Vertex *vertices,
 void createImmutableIndexBuffer(int numIndices, const VertexIndex *indices,
                                 GPUBuffer **buffer) {
   BufferDesc desc = {
-      .size = castUsizeI32(numIndices * sizeof(VertexIndex)),
+      .size = numIndices * SSIZEOF32(VertexIndex),
       .initialData = indices,
       .usage = GPUResourceUsage_IMMUTABLE,
       .bindFlags = GPUResourceBindBits_INDEX_BUFFER,
@@ -793,7 +793,8 @@ static void renderMesh(const Model *model, const Mesh *mesh,
     gContext->PSSetShaderResources(2, ARRAY_SIZE(textureViews), textureViews);
     gContext->PSSetSamplers(2, ARRAY_SIZE(samplers), samplers);
     gContext->DrawIndexed(castI32U32(subMesh->numIndices),
-                          subMesh->gpuIndexOffset, subMesh->gpuVertexOffset);
+                          castI32U32(subMesh->gpuIndexOffset),
+                          subMesh->gpuVertexOffset);
     // model->indexBaseOffset + subMesh->indexOffset
   }
 }
@@ -846,11 +847,11 @@ void renderModel(const Model *model) {
   }
 }
 
-void beginGPUProfiler(void) {}
+// void beginGPUProfiler(void) {}
 
-void gpuProfilerTimeStamp(void) {}
+// void gpuProfilerTimeStamp(void) {}
 
-void endGPUProfiler(void) {}
+// void endGPUProfiler(void) {}
 
 void setCamera(const Camera *camera) {
   ViewUniforms viewUniforms = {
@@ -929,7 +930,7 @@ void renderCameraVolume(const Camera *camera) {
                                &stride, &offset);
   gContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
 
-  gContext->Draw(24, 0);
+  gContext->Draw(ARRAY_SIZE(vertices), 0);
 }
 
 C_INTERFACE_END

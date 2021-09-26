@@ -68,15 +68,15 @@ void destroyGUI(void) {
 
 void handleGUIEvent(SDL_Event *event) { ImGui_ImplSDL2_ProcessEvent(event); }
 
-static void guiDebugSettings(GUI *gui, UNUSED void *userData) {
+static void guiDebugSettings(UNUSED GUI *gui, UNUSED void *userData) {
   ImGui::Text("Render Time: %f", gRenderer.renderTime);
 }
 
-static void guiRenderSettings(GUI *gui, UNUSED void *userData) {
+static void guiRenderSettings(UNUSED GUI *gui, UNUSED void *userData) {
   ImGui::Checkbox("Enable VSync", &gRenderer.vsync);
 }
 
-static void guiPostProcessingMenu(GUI *gui, UNUSED void *userdata) {}
+static void guiPostProcessingMenu(UNUSED GUI *gui, UNUSED void *userdata) {}
 
 static void guiSceneNodeTree(const Model *model, const SceneNode *node) {
   if (node->numChildNodes > 0) {
