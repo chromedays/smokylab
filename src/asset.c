@@ -67,7 +67,7 @@ static void readFile(const String *filePath, void **data, int *size) {
   CloseHandle(f);
 }
 
-void loadProgram(const char *baseName, ShaderProgram *program) {
+ShaderProgram loadProgram(const char *baseName) {
   String basePath = {};
   copyShaderRootPath(&basePath);
 
@@ -91,7 +91,8 @@ void loadProgram(const char *baseName, ShaderProgram *program) {
   LOG("Opening fragment shader at %s", fragPath.buf);
   readFile(&fragPath, &fragSrc, &fragSrcSize);
 
-  createProgram(program, vertSrcSize, vertSrc, fragSrcSize, fragSrc);
+  ShaderProgram program =
+      createProgram(vertSrcSize, vertSrc, fragSrcSize, fragSrc);
 
   MFREE(fragSrc);
   destroyString(&fragPath);
@@ -100,6 +101,8 @@ void loadProgram(const char *baseName, ShaderProgram *program) {
   destroyString(&vertPath);
 
   destroyString(&basePath);
+
+  return program;
 }
 
 void loadGLTFModel(const char *path, Model *model) {

@@ -1,13 +1,10 @@
 #pragma once
 #include "str.h"
 #include "util.h"
+#include "render.h"
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Weverything"
 #pragma clang diagnostic pop
-
-FORWARD_DECL(ShaderProgram);
-FORWARD_DECL(Model);
-FORWARD_DECL(GPUTexture2D);
 
 C_INTERFACE_BEGIN
 
@@ -17,7 +14,7 @@ void destroyAssetLoader(void);
 
 void copyAssetRootPath(String *path);
 
-void loadProgram(const char *baseName, ShaderProgram *program);
+ShaderProgram loadProgram(const char *baseName);
 
 void loadGLTFModel(const char *path, Model *model);
 

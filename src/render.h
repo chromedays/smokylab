@@ -187,13 +187,14 @@ void setDefaultModelRenderStates(Float4 clearColor);
 void swapBuffers(void);
 
 typedef struct _ShaderProgram {
+  Result result;
   GPUVertexShader *vert;
   GPUVertexLayout *inputLayout;
   GPUFragmentShader *frag;
 } ShaderProgram;
 
-void createProgram(ShaderProgram *program, int vertSrcSize, void *vertSrc,
-                   int fragSrcSize, void *fragSrc);
+ShaderProgram createProgram(int vertSrcSize, void *vertSrc, int fragSrcSize,
+                            void *fragSrc);
 void destroyProgram(ShaderProgram *program);
 void useProgram(const ShaderProgram *program);
 

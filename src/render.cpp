@@ -308,8 +308,10 @@ void initRenderer(void) {
   };
   createBuffer(&bufferDesc, &gCameraVolumeBuffer);
 
-  loadProgram("forward_pbr", &gForwardPBRProgram);
-  loadProgram("debug", &gDebugProgram);
+  gForwardPBRProgram = loadProgram("forward_pbr");
+  ASSERT(gForwardPBRProgram.result.valid);
+  gDebugProgram = loadProgram("debug");
+  ASSERT(gDebugProgram.result.valid);
 
   D3D11_QUERY_DESC queryDesc = {};
   queryDesc.Query = D3D11_QUERY_TIMESTAMP_DISJOINT;
@@ -429,11 +431,13 @@ void setDefaultModelRenderStates(Float4 clearColor) {
   useProgram(&gForwardPBRProgram);
 }
 
-void createProgram(ShaderProgram *program, int vertSrcSize, void *vertSrc,
-                   int fragSrcSize, void *fragSrc) {
+ShaderProgram createProgram(int vertSrcSize, void *vertSrc, int fragSrcSize,
+                            void *fragSrc) {
+
+  ShaderProgram program = {};
 
   HR_ASSERT(gDevice->CreateVertexShader(vertSrc, castI32U32(vertSrcSize), NULL,
-                                        (ID3D11VertexShader **)&program->vert));
+                                        (ID3D11VertexShader **)&program.vert));
 
   ID3D11ShaderReflection *refl;
   HR_ASSERT(D3DReflect(vertSrc, castI32U32(vertSrcSize), IID_PPV_ARGS(&refl)));
@@ -497,17 +501,22 @@ void createProgram(ShaderProgram *program, int vertSrcSize, void *vertSrc,
 
   HR_ASSERT(gDevice->CreateInputLayout(
       inputAttribs, shaderDesc.InputParameters, vertSrc,
-      castI32U32(vertSrcSize), (ID3D11InputLayout **)&program->inputLayout));
+      castI32U32(vertSrcSize), (ID3D11InputLayout **)&program.inputLayout));
 
   MFREE(inputAttribs);
 
   HR_ASSERT(gDevice->CreatePixelShader(fragSrc, castI32U32(fragSrcSize), NULL,
-                                       (ID3D11PixelShader **)&program->frag));
+                                       (ID3D11PixelShader **)&program.frag));
+
+  program.result.valid = true;
+  return program;
 }
+
 void destroyProgram(ShaderProgram *program) {
   COM_RELEASE(program->frag);
   COM_RELEASE(program->vert);
   COM_RELEASE(program->inputLayout);
+
   *program = {};
 }
 
