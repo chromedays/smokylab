@@ -163,4 +163,9 @@ inline int32_t castSsizeI32(ptrdiff_t value) {
   return castI64I32(value);
 }
 
+inline uint32_t castFloatToU32(float value) {
+  ASSERT(value >= 0.f);
+  return (uint32_t)value;
+}
+
 C_INTERFACE_END
