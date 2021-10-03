@@ -12,6 +12,7 @@ add_executable(
   editor.c
   editor_gui.cpp
   resource.c
+  smk.cpp
   "${SMOKYLAB_DEP_DIR}/imgui/imgui_demo.cpp"
   "${SMOKYLAB_DEP_DIR}/imgui/imgui_draw.cpp"
   "${SMOKYLAB_DEP_DIR}/imgui/imgui_impl_dx11.cpp"
@@ -23,6 +24,7 @@ target_include_directories(smokylab PUBLIC "${SMOKYLAB_DEP_DIR}")
 target_link_directories(smokylab PUBLIC "${SMOKYLAB_DEP_DIR}/SDL2")
 target_link_libraries(
   smokylab
+  # PUBLIC clang_rt.asan-x86_64.lib
   PUBLIC SDL2.lib
   PUBLIC SDL2main.lib
   PUBLIC gdi32.lib
@@ -40,7 +42,11 @@ set_property(TARGET smokylab PROPERTY C_STANDARD 17)
 
 target_compile_options(
   smokylab
-  PRIVATE -Wall
+  PRIVATE -Zi
+          -Od
+          -MT
+          # -fsanitize=address
+          -Wall
           -Wextra
           -Wpedantic
           -Wno-newline-eof

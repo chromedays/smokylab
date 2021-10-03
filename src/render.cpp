@@ -103,7 +103,7 @@ static DXGI_RATIONAL queryRefreshRate(int ww, int wh,
 
   MFREE(displayModes);
   COM_RELEASE(adapterOutput);
-  COM_RELEASE(adapter);
+  adapter->Release();
   COM_RELEASE(factory);
 
   return refreshRate;
@@ -329,6 +329,10 @@ void initRenderer(void) {
 void destroyRenderer(void) {
   ASSERT(gRenderer.valid);
 
+  COM_RELEASE(gProfilerDisjointQuery);
+  COM_RELEASE(gProfilerTimestampBeginQuery);
+  COM_RELEASE(gProfilerTimestampEndQuery);
+
   destroyProgram(&gDebugProgram);
   destroyProgram(&gForwardPBRProgram);
 
@@ -354,6 +358,11 @@ void destroyRenderer(void) {
   COM_RELEASE(gContext);
   COM_RELEASE(gDevice);
 
+  if (gDummyDeviceForFixedGPUClock) {
+    HR_ASSERT(gDummyDeviceForFixedGPUClock->SetStablePowerState(FALSE));
+    COM_RELEASE(gDummyDeviceForFixedGPUClock);
+  }
+
 #ifdef DEBUG
   {
     IDXGIDebug *debug;
@@ -365,17 +374,15 @@ void destroyRenderer(void) {
         (DXGIGetDebugInterfaceFn)GetProcAddress(dxgidebugLibrary,
                                                 "DXGIGetDebugInterface");
     DXGIGetDebugInterface(IID_PPV_ARGS(&debug));
-    HR_ASSERT(debug->ReportLiveObjects(DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_ALL));
+    HR_ASSERT(debug->ReportLiveObjects(
+        DXGI_DEBUG_ALL,
+        (DXGI_DEBUG_RLO_FLAGS)(DXGI_DEBUG_RLO_ALL |
+                               DXGI_DEBUG_RLO_IGNORE_INTERNAL)));
 
     FreeLibrary(dxgidebugLibrary);
     COM_RELEASE(debug);
   }
 #endif
-
-  if (gDummyDeviceForFixedGPUClock) {
-    HR_ASSERT(gDummyDeviceForFixedGPUClock->SetStablePowerState(FALSE));
-    COM_RELEASE(gDummyDeviceForFixedGPUClock);
-  }
 
   gRenderer.valid = false;
 }

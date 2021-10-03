@@ -34,7 +34,7 @@ void destroyApp(void) {
 void pollAppEvent(void) {
   SDL_Event event;
   while (SDL_PollEvent(&event)) {
-    handleGUIEvent(&event);
+    // handleGUIEvent(&event);
     switch (event.type) {
     case SDL_MOUSEBUTTONDOWN:
     case SDL_MOUSEBUTTONUP:

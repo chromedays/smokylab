@@ -80,8 +80,10 @@
 
 #define LOG(...)                                                               \
   do {                                                                         \
-    printf(__VA_ARGS__);                                                       \
-    printf("\n");                                                              \
+    char buf[512] = {};                                                        \
+    sprintf(buf, __VA_ARGS__);                                                 \
+    OutputDebugStringA(buf);                                                   \
+    OutputDebugStringA("\n");                                                  \
   } while (0)
 
 #ifndef MAX

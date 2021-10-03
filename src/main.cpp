@@ -6,6 +6,7 @@
 #include "app.h"
 #include "editor.h"
 #include "resource.h"
+#include "smk.h"
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Weverything"
 #include <Windows.h>
@@ -19,9 +20,11 @@ int main(UNUSED int argc, UNUSED char **argv) {
   // Initialize asset paths
   initAssetLoaderFromConfigFile();
   initApp("Smokylab", 1920, 1080);
-  initRenderer();
-  initResourceManager();
 
+  smkRenderer renderer = smkCreateRenderer();
+
+  // initRenderer();
+  // initResourceManager();
 #if 0
   // clang-format off
   Float4 skyboxVertices[8] = {
@@ -53,10 +56,11 @@ int main(UNUSED int argc, UNUSED char **argv) {
   // clang-format on
 #endif
 
+#if 0
   Camera cam;
   initCameraLookingAtTarget(&cam, float3(-5, 1, 0), float3(-5, 1.105f, -1));
 
-  initGUI();
+  // initGUI();
   GUI gui = {
       .cam = &cam,
       .models = NULL,
@@ -82,11 +86,31 @@ int main(UNUSED int argc, UNUSED char **argv) {
     }
     endRender();
   }
+#endif
 
-  destroyEditor(&editor);
-  destroyGUI();
-  destroyResourceManager();
-  destroyRenderer();
+  smkInitGUI(&renderer);
+
+  Camera cam = {};
+  initCameraLookingAtTarget(&cam, float3(-5, 1, 0), float3(-5, 1.105f, -1));
+
+  smkScene scene = smkLoadSceneFromGLTFAsset(&renderer, "models/Sponza");
+
+  while (gApp.running) {
+    pollAppEvent();
+    updateAppInput();
+
+    moveCameraByInputs(&cam);
+  }
+
+  smkDestroyScene(&scene);
+
+  smkDestroyGUI();
+  smkDestroyRenderer(&renderer);
+  // destroyEditor(&editor);
+  // destroyGUI();
+  // destroyResourceManager();
+  // destroyRenderer();
+
   destroyApp();
   destroyAssetLoader();
 
