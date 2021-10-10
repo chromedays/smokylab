@@ -24,6 +24,7 @@ void smkDestroyProgram(smkShaderProgram *program);
 void smkUseProgram(smkRenderer *renderer, smkShaderProgram *program);
 
 typedef struct _smkTexture {
+  D3D11_TEXTURE2D_DESC desc;
   ID3D11Texture2D *handle;
   ID3D11ShaderResourceView *view;
 } smkTexture;
@@ -33,6 +34,16 @@ smkTexture smkCreateTexture2D(smkRenderer *renderer, int width, int height,
                               uint32_t bindFlags, bool generateMipMaps,
                               void *initialData);
 void smkDestroyTexture(smkTexture *texture);
+
+typedef struct _smkSampler {
+  D3D11_SAMPLER_DESC desc;
+  ID3D11SamplerState *handle;
+} smkSampler;
+
+typedef struct _smkBuffer {
+  D3D11_BUFFER_DESC desc;
+  ID3D11Buffer *handle;
+} smkBuffer;
 
 typedef struct _smkViewUniforms {
   Mat4 viewMat;
@@ -67,16 +78,16 @@ typedef struct _smkRenderer {
   ID3D11DepthStencilView *swapChainDSV;
 
   smkTexture defaultTexture;
-  ID3D11SamplerState *defaultSampler;
+  smkSampler defaultSampler;
 
   ID3D11DepthStencilState *defaultDepthStencilState;
   ID3D11RasterizerState *defaultRasterizerState;
 
-  ID3D11Buffer *viewUniformBuffer;
-  ID3D11Buffer *materialUniformBuffer;
-  ID3D11Buffer *drawUniformBuffer;
+  smkBuffer viewUniformBuffer;
+  smkBuffer materialUniformBuffer;
+  smkBuffer drawUniformBuffer;
 
-  ID3D11Buffer *cameraVolumeVertexBuffer;
+  smkBuffer cameraVolumeVertexBuffer;
 
   smkShaderProgram forwardPBRProgram;
   smkShaderProgram debugProgram;
@@ -129,11 +140,12 @@ typedef struct _smkVertex {
 typedef struct _smkMesh {
   int numVertices;
   int numIndices;
+  int bufferSize;
   uint8_t *bufferMemory;
   smkVertex *vertices;
   uint32_t *indices;
 
-  ID3D11Buffer *gpuBuffer;
+  smkBuffer gpuBuffer;
 
   int numSubMeshes;
   smkSubMesh *subMeshes;
@@ -164,7 +176,7 @@ typedef struct _smkScene {
   smkTexture *textures;
 
   int numSamplers;
-  ID3D11SamplerState **samplers;
+  smkSampler *samplers;
 
   int numMaterials;
   smkMaterial *materials;
@@ -179,7 +191,8 @@ typedef struct _smkScene {
 smkScene smkLoadSceneFromGLTFAsset(smkRenderer *renderer,
                                    const char *assetPath);
 void smkDestroyScene(smkScene *scene);
-smkScene smkMergeScene(const smkScene *a, const smkScene *b);
+smkScene smkMergeScene(smkRenderer *renderer, const smkScene *sceneA,
+                       const smkScene *sceneB);
 void smkRenderScene(smkRenderer *renderer, const smkScene *scene);
 
 typedef struct _smkRenderCommand {

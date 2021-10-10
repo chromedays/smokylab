@@ -131,32 +131,34 @@ static smkTexture createTexture2D(ID3D11Device *device,
   ASSERT(device && context);
   ASSERT(generateMipMaps ? (usage == D3D11_USAGE_DEFAULT) : true);
 
-  smkTexture texture = {};
-
-  D3D11_TEXTURE2D_DESC textureDesc = {
-      .Width = castI32U32(width),
-      .Height = castI32U32(height),
-      .MipLevels = 1,
-      .ArraySize = 1,
-      .Format = format,
-      .SampleDesc =
+  smkTexture texture = {
+      .desc =
           {
-              .Count = 1,
-              .Quality = 0,
+
+              .Width = castI32U32(width),
+              .Height = castI32U32(height),
+              .MipLevels = 1,
+              .ArraySize = 1,
+              .Format = format,
+              .SampleDesc =
+                  {
+                      .Count = 1,
+                      .Quality = 0,
+                  },
+              .Usage = usage,
+              .BindFlags = bindFlags,
+              .CPUAccessFlags = 0,
           },
-      .Usage = usage,
-      .BindFlags = bindFlags,
-      .CPUAccessFlags = 0,
   };
 
   if (generateMipMaps) {
-    textureDesc.MipLevels =
+    texture.desc.MipLevels =
         castFloatToU32(floorf(log2f((float)MAX(width, height))));
-    textureDesc.BindFlags |=
+    texture.desc.BindFlags |=
         (D3D11_BIND_RENDER_TARGET | D3D11_BIND_SHADER_RESOURCE);
-    textureDesc.MiscFlags = D3D11_RESOURCE_MISC_GENERATE_MIPS;
+    texture.desc.MiscFlags = D3D11_RESOURCE_MISC_GENERATE_MIPS;
 
-    HR_ASSERT(device->CreateTexture2D(&textureDesc, NULL, &texture.handle));
+    HR_ASSERT(device->CreateTexture2D(&texture.desc, NULL, &texture.handle));
     if (initialData) {
       int bytesPerPixel = getBytesPerPixelFromFormat(format);
       UINT pitch = castI32U32(width * bytesPerPixel);
@@ -171,10 +173,10 @@ static smkTexture createTexture2D(ID3D11Device *device,
           .SysMemPitch = castI32U32(width * bytesPerPixel),
       };
 
-      HR_ASSERT(device->CreateTexture2D(&textureDesc, &initialDataDesc,
+      HR_ASSERT(device->CreateTexture2D(&texture.desc, &initialDataDesc,
                                         &texture.handle));
     } else {
-      HR_ASSERT(device->CreateTexture2D(&textureDesc, NULL, &texture.handle));
+      HR_ASSERT(device->CreateTexture2D(&texture.desc, NULL, &texture.handle));
     }
   }
 
@@ -184,7 +186,7 @@ static smkTexture createTexture2D(ID3D11Device *device,
       .Texture2D =
           {
               .MostDetailedMip = 0,
-              .MipLevels = textureDesc.MipLevels,
+              .MipLevels = texture.desc.MipLevels,
           },
   };
 
@@ -198,47 +200,54 @@ static smkTexture createTexture2D(ID3D11Device *device,
   return texture;
 }
 
-static ID3D11SamplerState *
-createSampler(ID3D11Device *device, D3D11_FILTER filter,
-              D3D11_TEXTURE_ADDRESS_MODE addressModeU,
-              D3D11_TEXTURE_ADDRESS_MODE addressModeV) {
+static smkSampler createSampler(ID3D11Device *device, D3D11_FILTER filter,
+                                D3D11_TEXTURE_ADDRESS_MODE addressModeU,
+                                D3D11_TEXTURE_ADDRESS_MODE addressModeV) {
   ASSERT(device);
 
-  ID3D11SamplerState *sampler = {};
-
-  D3D11_SAMPLER_DESC samplerDesc = {
-      .Filter = filter,
-      .AddressU = addressModeU,
-      .AddressV = addressModeV,
-      .AddressW = D3D11_TEXTURE_ADDRESS_WRAP,
-      .MaxLOD = D3D11_FLOAT32_MAX,
+  smkSampler sampler = {
+      .desc =
+          {
+              .Filter = filter,
+              .AddressU = addressModeU,
+              .AddressV = addressModeV,
+              .AddressW = D3D11_TEXTURE_ADDRESS_WRAP,
+              .MaxLOD = D3D11_FLOAT32_MAX,
+          },
   };
 
-  HR_ASSERT(device->CreateSamplerState(&samplerDesc, &sampler));
+  HR_ASSERT(device->CreateSamplerState(&sampler.desc, &sampler.handle));
 
   return sampler;
 }
 
-static ID3D11Buffer *createBuffer(ID3D11Device *device, int size,
-                                  void *initialData, D3D11_USAGE usage,
-                                  uint32_t bindFlags) {
+static smkSampler copySampler(ID3D11Device *device, smkSampler *original) {
+  smkSampler copy = {.desc = original->desc};
+  HR_ASSERT(device->CreateSamplerState(&copy.desc, &copy.handle));
+  return copy;
+}
+
+static smkBuffer createBuffer(ID3D11Device *device, int size, void *initialData,
+                              D3D11_USAGE usage, uint32_t bindFlags) {
   ASSERT(device);
 
-  ID3D11Buffer *buffer = NULL;
-
-  D3D11_BUFFER_DESC bufferDesc = {
-      .ByteWidth = castI32U32(size),
-      .Usage = usage,
-      .BindFlags = bindFlags,
+  smkBuffer buffer = {
+      .desc =
+          {
+              .ByteWidth = castI32U32(size),
+              .Usage = usage,
+              .BindFlags = bindFlags,
+          },
   };
 
   if (initialData) {
     D3D11_SUBRESOURCE_DATA initialDataDesc = {
         .pSysMem = initialData,
     };
-    HR_ASSERT(device->CreateBuffer(&bufferDesc, &initialDataDesc, &buffer));
+    HR_ASSERT(
+        device->CreateBuffer(&buffer.desc, &initialDataDesc, &buffer.handle));
   } else {
-    HR_ASSERT(device->CreateBuffer(&bufferDesc, NULL, &buffer));
+    HR_ASSERT(device->CreateBuffer(&buffer.desc, NULL, &buffer.handle));
   }
 
   return buffer;
@@ -540,15 +549,15 @@ void smkDestroyRenderer(smkRenderer *renderer) {
   smkDestroyProgram(&renderer->debugProgram);
   smkDestroyProgram(&renderer->forwardPBRProgram);
 
-  COM_RELEASE(renderer->cameraVolumeVertexBuffer);
-  COM_RELEASE(renderer->drawUniformBuffer);
-  COM_RELEASE(renderer->materialUniformBuffer);
-  COM_RELEASE(renderer->viewUniformBuffer);
+  COM_RELEASE(renderer->cameraVolumeVertexBuffer.handle);
+  COM_RELEASE(renderer->drawUniformBuffer.handle);
+  COM_RELEASE(renderer->materialUniformBuffer.handle);
+  COM_RELEASE(renderer->viewUniformBuffer.handle);
 
   COM_RELEASE(renderer->defaultRasterizerState);
   COM_RELEASE(renderer->defaultDepthStencilState);
 
-  COM_RELEASE(renderer->defaultSampler);
+  COM_RELEASE(renderer->defaultSampler.handle);
   smkDestroyTexture(&renderer->defaultTexture);
 
   COM_RELEASE(renderer->swapChainDSV);
@@ -709,7 +718,7 @@ smkScene smkLoadSceneFromGLTFAsset(smkRenderer *renderer,
 #define GLTF_REPEAT 10497
   scene.numSamplers = castUsizeI32(gltf->samplers_count);
   if (scene.numSamplers > 0) {
-    scene.samplers = MMALLOC_ARRAY(ID3D11SamplerState *, scene.numSamplers);
+    scene.samplers = MMALLOC_ARRAY(smkSampler, scene.numSamplers);
 
     for (cgltf_size samplerIndex = 0; samplerIndex < gltf->samplers_count;
          ++samplerIndex) {
@@ -880,9 +889,9 @@ smkScene smkLoadSceneFromGLTFAsset(smkRenderer *renderer,
         subMesh->material = castSsizeI32(prim->material - gltf->materials);
       }
 
-      int bufferSize = mesh->numVertices * SSIZEOF32(smkVertex) +
-                       mesh->numIndices * SSIZEOF32(uint32_t);
-      mesh->bufferMemory = MMALLOC_ARRAY(uint8_t, bufferSize);
+      mesh->bufferSize = mesh->numVertices * SSIZEOF32(smkVertex) +
+                         mesh->numIndices * SSIZEOF32(uint32_t);
+      mesh->bufferMemory = MMALLOC_ARRAY(uint8_t, mesh->bufferSize);
 
       mesh->vertices = (smkVertex *)mesh->bufferMemory;
       for (int vertexIndex = 0; vertexIndex < mesh->numVertices;
@@ -971,7 +980,7 @@ smkScene smkLoadSceneFromGLTFAsset(smkRenderer *renderer,
       }
 
       mesh->gpuBuffer =
-          createBuffer(renderer->device, bufferSize, mesh->bufferMemory,
+          createBuffer(renderer->device, mesh->bufferSize, mesh->bufferMemory,
                        D3D11_USAGE_IMMUTABLE,
                        D3D11_BIND_VERTEX_BUFFER | D3D11_BIND_INDEX_BUFFER);
     }
@@ -1062,7 +1071,7 @@ void smkDestroyScene(smkScene *scene) {
   for (int i = 0; i < scene->numMeshes; ++i) {
     smkMesh *mesh = &scene->meshes[i];
     MFREE(mesh->subMeshes);
-    COM_RELEASE(mesh->gpuBuffer);
+    COM_RELEASE(mesh->gpuBuffer.handle);
     MFREE(mesh->bufferMemory);
   }
   MFREE(scene->meshes);
@@ -1070,8 +1079,8 @@ void smkDestroyScene(smkScene *scene) {
   MFREE(scene->materials);
 
   for (int i = 0; i < scene->numSamplers; ++i) {
-    ID3D11SamplerState *sampler = scene->samplers[i];
-    COM_RELEASE(sampler);
+    smkSampler sampler = scene->samplers[i];
+    COM_RELEASE(sampler.handle);
   }
   MFREE(scene->samplers);
 
@@ -1084,7 +1093,163 @@ void smkDestroyScene(smkScene *scene) {
   *scene = {};
 }
 
-smkScene smkMergeScene(const smkScene *a, const smkScene *b) {}
+static smkTexture copyTexture(ID3D11Device *device,
+                              ID3D11DeviceContext *context,
+                              smkTexture *original) {
+  // TODO: Handle copying immutable texture
+  ASSERT(original->desc.Usage != D3D11_USAGE_IMMUTABLE);
+
+  smkTexture copy = {.desc = original->desc};
+
+  HR_ASSERT(device->CreateTexture2D(&copy.desc, NULL, &copy.handle));
+  context->CopyResource(copy.handle, original->handle);
+  HR_ASSERT(device->CreateShaderResourceView(copy.handle, NULL, &copy.view));
+
+  return copy;
+}
+
+static smkMesh copyMesh(ID3D11Device *device, smkMesh *original) {
+  ASSERT(device && original);
+
+  smkMesh copy = {};
+
+  copy.numVertices = original->numVertices;
+  copy.numIndices = original->numIndices;
+  copy.bufferSize = original->bufferSize;
+  copy.bufferMemory = MMALLOC_ARRAY_UNINITIALIZED(uint8_t, copy.bufferSize);
+  memcpy(copy.bufferMemory, original->bufferMemory, copy.bufferSize);
+  copy.vertices = (smkVertex *)copy.bufferMemory;
+  copy.gpuBuffer.desc = original->gpuBuffer.desc;
+  D3D11_SUBRESOURCE_DATA initialData = {
+      .pSysMem = copy.bufferMemory,
+  };
+  HR_ASSERT(device->CreateBuffer(&copy.gpuBuffer.desc, &initialData,
+                                 &copy.gpuBuffer.handle));
+
+  copy.numSubMeshes = original->numSubMeshes;
+  copy.subMeshes = MMALLOC_ARRAY(smkSubMesh, copy.numSubMeshes);
+  for (int i = 0; i < original->numSubMeshes; ++i) {
+    copy.subMeshes[i] = original->subMeshes[i];
+  }
+
+  return copy;
+}
+
+static smkEntity copyEntity(smkEntity *original) {
+  smkEntity copy = *original;
+  copyString(&copy.name, &original->name);
+  copy.children = MMALLOC_ARRAY(int, copy.numChildren);
+  memcpy(copy.children, original->children, copy.numChildren * sizeof(int));
+  return copy;
+}
+
+smkScene smkMergeScene(smkRenderer *renderer, const smkScene *sceneA,
+                       const smkScene *sceneB) {
+  ASSERT(renderer && sceneA && sceneB);
+
+  smkScene mergedScene = {};
+
+  mergedScene.numTextures = sceneA->numTextures + sceneB->numTextures;
+  mergedScene.textures = MMALLOC_ARRAY(smkTexture, mergedScene.numTextures);
+  for (int i = 0; i < sceneA->numTextures; ++i) {
+    mergedScene.textures[i] =
+        copyTexture(renderer->device, renderer->context, &sceneA->textures[i]);
+  }
+  for (int i = 0; i < sceneB->numTextures; ++i) {
+    mergedScene.textures[sceneA->numTextures + i] =
+        copyTexture(renderer->device, renderer->context, &sceneB->textures[i]);
+  }
+
+  mergedScene.numSamplers = sceneA->numSamplers + sceneB->numSamplers;
+  mergedScene.samplers = MMALLOC_ARRAY(smkSampler, mergedScene.numSamplers);
+  for (int i = 0; i < sceneA->numSamplers; ++i) {
+    mergedScene.samplers[i] =
+        copySampler(renderer->device, &sceneA->samplers[i]);
+  }
+  for (int i = 0; i < sceneB->numSamplers; ++i) {
+    mergedScene.samplers[sceneA->numSamplers + i] =
+        copySampler(renderer->device, &sceneB->samplers[i]);
+  }
+
+  mergedScene.numMaterials = sceneA->numMaterials + sceneB->numMaterials;
+  mergedScene.materials = MMALLOC_ARRAY(smkMaterial, mergedScene.numMaterials);
+  for (int i = 0; i < sceneA->numMaterials; ++i) {
+    mergedScene.materials[i] = sceneA->materials[i];
+  }
+  for (int i = 0; i < sceneB->numMaterials; ++i) {
+    smkMaterial *dstMaterial = &mergedScene.materials[sceneA->numMaterials + i];
+    *dstMaterial = sceneB->materials[i];
+
+    if (dstMaterial->baseColorTexture >= 0)
+      dstMaterial->baseColorTexture += sceneA->numTextures;
+
+    if (dstMaterial->metallicRoughnessTexture >= 0)
+      dstMaterial->metallicRoughnessTexture += sceneA->numTextures;
+
+    if (dstMaterial->normalTexture >= 0)
+      dstMaterial->normalTexture += sceneA->numTextures;
+
+    if (dstMaterial->occlusionTexture >= 0)
+      dstMaterial->occlusionTexture += sceneA->numTextures;
+
+    if (dstMaterial->emissiveTexture >= 0)
+      dstMaterial->emissiveTexture += sceneA->numTextures;
+
+    if (dstMaterial->baseColorSampler >= 0)
+      dstMaterial->baseColorSampler += sceneA->numSamplers;
+
+    if (dstMaterial->metallicRoughnessSampler >= 0)
+      dstMaterial->metallicRoughnessSampler += sceneA->numSamplers;
+
+    if (dstMaterial->normalSampler >= 0)
+      dstMaterial->normalSampler += sceneA->numSamplers;
+
+    if (dstMaterial->occlusionSampler >= 0)
+      dstMaterial->occlusionSampler += sceneA->numSamplers;
+
+    if (dstMaterial->emissiveSampler >= 0)
+      dstMaterial->emissiveSampler += sceneA->numSamplers;
+  }
+
+  mergedScene.numMeshes = sceneA->numMeshes + sceneB->numMeshes;
+  mergedScene.meshes = MMALLOC_ARRAY(smkMesh, mergedScene.numMeshes);
+  for (int i = 0; i < sceneA->numMeshes; ++i) {
+    mergedScene.meshes[i] = copyMesh(renderer->device, &sceneA->meshes[i]);
+  }
+  for (int i = 0; i < sceneB->numMeshes; ++i) {
+    smkMesh *dstMesh = &mergedScene.meshes[sceneA->numMeshes + i];
+    *dstMesh = copyMesh(renderer->device, &sceneB->meshes[i]);
+    for (int j = 0; j < dstMesh->numSubMeshes; ++j) {
+      if (dstMesh->subMeshes[j].material >= 0) {
+        dstMesh->subMeshes[j].material += sceneA->numMaterials;
+      }
+    }
+  }
+
+  mergedScene.numEntities = sceneA->numEntities + sceneB->numEntities;
+  mergedScene.entities = MMALLOC_ARRAY(smkEntity, mergedScene.numEntities);
+  for (int i = 0; i < sceneA->numEntities; ++i) {
+    smkEntity *srcEntity = &sceneA->entities[i];
+    smkEntity *dstEntity = &mergedScene.entities[i];
+    *dstEntity = copyEntity(srcEntity);
+  }
+  for (int i = 0; i < sceneB->numEntities; ++i) {
+    smkEntity *srcEntity = &sceneB->entities[i];
+    smkEntity *dstEntity = &mergedScene.entities[sceneA->numEntities + i];
+    *dstEntity = copyEntity(srcEntity);
+    if (dstEntity->parent >= 0) {
+      dstEntity->parent += sceneA->numEntities;
+    }
+    if (dstEntity->mesh >= 0) {
+      dstEntity->mesh += sceneA->numMeshes;
+    }
+    for (int j = 0; j < dstEntity->numChildren; ++j) {
+      dstEntity->children[j] += sceneA->numEntities;
+    }
+  }
+
+  return mergedScene;
+}
 
 static void smkRenderMesh(smkRenderer *renderer, const smkScene *scene,
                           const smkMesh *mesh) {
@@ -1092,12 +1257,12 @@ static void smkRenderMesh(smkRenderer *renderer, const smkScene *scene,
 
   UINT vertexStride = sizeof(smkVertex);
   UINT vertexOffset = 0;
-  renderer->context->IASetVertexBuffers(0, 1, &mesh->gpuBuffer, &vertexStride,
-                                        &vertexOffset);
+  renderer->context->IASetVertexBuffers(0, 1, &mesh->gpuBuffer.handle,
+                                        &vertexStride, &vertexOffset);
   UINT indexOffset =
       castUsizeU32(castI32Usize(mesh->numVertices) * sizeof(smkVertex));
-  renderer->context->IASetIndexBuffer(mesh->gpuBuffer, DXGI_FORMAT_R32_UINT,
-                                      indexOffset);
+  renderer->context->IASetIndexBuffer(mesh->gpuBuffer.handle,
+                                      DXGI_FORMAT_R32_UINT, indexOffset);
 
   for (int i = 0; i < mesh->numSubMeshes; ++i) {
     const smkSubMesh *subMesh = &mesh->subMeshes[i];
@@ -1114,9 +1279,9 @@ static void smkRenderMesh(smkRenderer *renderer, const smkScene *scene,
       baseColorTexture = &scene->textures[material->baseColorTexture];
     }
 
-    ID3D11SamplerState *baseColorSampler = renderer->defaultSampler;
+    ID3D11SamplerState *baseColorSampler = renderer->defaultSampler.handle;
     if (material->baseColorSampler >= 0) {
-      baseColorSampler = scene->samplers[material->baseColorSampler];
+      baseColorSampler = scene->samplers[material->baseColorSampler].handle;
     }
 
     smkTexture *metallicRoughnessTexture = &renderer->defaultTexture;
@@ -1125,14 +1290,15 @@ static void smkRenderMesh(smkRenderer *renderer, const smkScene *scene,
           &scene->textures[material->metallicRoughnessTexture];
     }
 
-    ID3D11SamplerState *metallicRoughnessSampler = renderer->defaultSampler;
+    ID3D11SamplerState *metallicRoughnessSampler =
+        renderer->defaultSampler.handle;
     if (material->metallicRoughnessSampler >= 0) {
       metallicRoughnessSampler =
-          scene->samplers[material->metallicRoughnessSampler];
+          scene->samplers[material->metallicRoughnessSampler].handle;
     }
 
-    renderer->context->UpdateSubresource(renderer->materialUniformBuffer, 0,
-                                         NULL, &materialUniforms, 0, 0);
+    renderer->context->UpdateSubresource(renderer->materialUniformBuffer.handle,
+                                         0, NULL, &materialUniforms, 0, 0);
 
     ID3D11ShaderResourceView *textureViews[] = {baseColorTexture->view,
                                                 metallicRoughnessTexture->view};
@@ -1160,8 +1326,8 @@ void smkRenderScene(smkRenderer *renderer, const smkScene *scene) {
       smkDrawUniforms drawUniforms = {};
       drawUniforms.modelMat = entity->worldTransform.matrix;
       drawUniforms.invModelMat = mat4Inverse(entity->worldTransform.matrix);
-      renderer->context->UpdateSubresource(renderer->drawUniformBuffer, 0, NULL,
-                                           &drawUniforms, 0, 0);
+      renderer->context->UpdateSubresource(renderer->drawUniformBuffer.handle,
+                                           0, NULL, &drawUniforms, 0, 0);
 
       smkMesh *mesh = &scene->meshes[entity->mesh];
       smkRenderMesh(renderer, scene, mesh);

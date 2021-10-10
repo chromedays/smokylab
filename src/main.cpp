@@ -94,6 +94,8 @@ int main(UNUSED int argc, UNUSED char **argv) {
   initCameraLookingAtTarget(&camera, float3(-5, 1, 0), float3(-5, 1.105f, -1));
 
   smkScene scene = smkLoadSceneFromGLTFAsset(&renderer, "models/Sponza");
+  smkScene scene2 = smkLoadSceneFromGLTFAsset(&renderer, "models/FlightHelmet");
+  smkScene scene3 = smkMergeScene(&renderer, &scene, &scene2);
 
   while (gApp.running) {
     pollAppEvent();
@@ -104,8 +106,8 @@ int main(UNUSED int argc, UNUSED char **argv) {
     smkViewUniforms viewUniforms = {};
     viewUniforms.viewMat = getViewMatrix(&camera);
     viewUniforms.projMat = getProjMatrix(&camera);
-    renderer.context->UpdateSubresource(renderer.viewUniformBuffer, 0, NULL,
-                                        &viewUniforms, 0, 0);
+    renderer.context->UpdateSubresource(renderer.viewUniformBuffer.handle, 0,
+                                        NULL, &viewUniforms, 0, 0);
 
     int windowWidth, windowHeight;
     SDL_GetWindowSize(gApp.window, &windowWidth, &windowHeight);
@@ -136,9 +138,9 @@ int main(UNUSED int argc, UNUSED char **argv) {
     renderer.context->OMSetBlendState(NULL, NULL, 0xFFFFFFFF);
 
 #if 1
-    ID3D11Buffer *uniformBuffers[] = {renderer.viewUniformBuffer,
-                                      renderer.drawUniformBuffer,
-                                      renderer.materialUniformBuffer};
+    ID3D11Buffer *uniformBuffers[] = {renderer.viewUniformBuffer.handle,
+                                      renderer.drawUniformBuffer.handle,
+                                      renderer.materialUniformBuffer.handle};
 
     renderer.context->VSSetConstantBuffers(0, ARRAY_SIZE(uniformBuffers),
                                            uniformBuffers);
@@ -151,12 +153,14 @@ int main(UNUSED int argc, UNUSED char **argv) {
     renderer.context->PSSetShader(renderer.forwardPBRProgram.fragmentShader,
                                   NULL, 0);
 
-    smkRenderScene(&renderer, &scene);
+    smkRenderScene(&renderer, &scene3);
 #endif
 
     renderer.swapChain->Present(0, 0);
   }
 
+  smkDestroyScene(&scene3);
+  smkDestroyScene(&scene2);
   smkDestroyScene(&scene);
 
   smkDestroyGUI();
