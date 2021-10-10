@@ -271,8 +271,8 @@ static void destroyFileData(smkFileData *fileData) {
   *fileData = {};
 }
 
-static smkShaderProgram loadProgramFromShaderAsset(ID3D11Device *device,
-                                                   const char *assetPath) {
+smkShaderProgram loadProgramFromShaderAsset(ID3D11Device *device,
+                                            const char *assetPath) {
   ASSERT(device);
 
   smkShaderProgram program = {};
@@ -590,11 +590,26 @@ void smkDestroyRenderer(smkRenderer *renderer) {
   gIsRendererInitialized = false;
 }
 
+smkShaderProgram smkLoadProgramFromShaderAsset(smkRenderer *renderer,
+                                               const char *assetPath) {
+  ASSERT(renderer);
+  smkShaderProgram program =
+      loadProgramFromShaderAsset(renderer->device, assetPath);
+  return program;
+}
+
 void smkDestroyProgram(smkShaderProgram *program) {
   COM_RELEASE(program->fragmentShader);
   COM_RELEASE(program->vertexLayout);
   COM_RELEASE(program->vertexShader);
   *program = {};
+}
+
+void smkUseProgram(smkRenderer *renderer, smkShaderProgram *program) {
+  ASSERT(renderer && program);
+  renderer->context->IASetInputLayout(program->vertexLayout);
+  renderer->context->VSSetShader(program->vertexShader, NULL, 0);
+  renderer->context->PSSetShader(program->fragmentShader, NULL, 0);
 }
 
 smkTexture smkCreateTexture2D(smkRenderer *renderer, int width, int height,
@@ -888,9 +903,8 @@ smkScene smkLoadSceneFromGLTFAsset(smkRenderer *renderer,
 
         for (cgltf_size indexIndex = 0; indexIndex < prim->indices->count;
              ++indexIndex) {
-          mesh->indices[indexBase + indexIndex] =
-              indexBase + castUsizeU32(cgltf_accessor_read_index(prim->indices,
-                                                                 indexIndex));
+          mesh->indices[indexBase + indexIndex] = castUsizeU32(
+              cgltf_accessor_read_index(prim->indices, indexIndex));
         }
 
         indexBase += castI32U32(subMesh->numIndices);
@@ -1072,15 +1086,16 @@ void smkDestroyScene(smkScene *scene) {
 
 smkScene smkMergeScene(const smkScene *a, const smkScene *b) {}
 
-void smkRenderMesh(smkRenderer *renderer, const smkScene *scene,
-                   const smkMesh *mesh) {
+static void smkRenderMesh(smkRenderer *renderer, const smkScene *scene,
+                          const smkMesh *mesh) {
   ASSERT(renderer);
 
-  UINT vertexStride = 0;
+  UINT vertexStride = sizeof(smkVertex);
   UINT vertexOffset = 0;
   renderer->context->IASetVertexBuffers(0, 1, &mesh->gpuBuffer, &vertexStride,
                                         &vertexOffset);
-  UINT indexOffset = mesh->numVertices * sizeof(smkVertex);
+  UINT indexOffset =
+      castUsizeU32(castI32Usize(mesh->numVertices) * sizeof(smkVertex));
   renderer->context->IASetIndexBuffer(mesh->gpuBuffer, DXGI_FORMAT_R32_UINT,
                                       indexOffset);
 
@@ -1127,9 +1142,9 @@ void smkRenderMesh(smkRenderer *renderer, const smkScene *scene,
     renderer->context->PSSetShaderResources(2, ARRAY_SIZE(textureViews),
                                             textureViews);
     renderer->context->PSSetSamplers(2, ARRAY_SIZE(samplers), samplers);
-    // TODO: check if this(vertexBase = 0) works
     renderer->context->DrawIndexed(castI32U32(subMesh->numIndices),
-                                   castI32U32(subMesh->indexBase), 0);
+                                   castI32U32(subMesh->indexBase),
+                                   subMesh->vertexBase);
   }
 }
 
@@ -1147,6 +1162,9 @@ void smkRenderScene(smkRenderer *renderer, const smkScene *scene) {
       drawUniforms.invModelMat = mat4Inverse(entity->worldTransform.matrix);
       renderer->context->UpdateSubresource(renderer->drawUniformBuffer, 0, NULL,
                                            &drawUniforms, 0, 0);
+
+      smkMesh *mesh = &scene->meshes[entity->mesh];
+      smkRenderMesh(renderer, scene, mesh);
     }
   }
 }

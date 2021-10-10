@@ -18,9 +18,10 @@ typedef struct _smkShaderProgram {
   ID3D11PixelShader *fragmentShader;
 } smkShaderProgram;
 
-// smkShaderProgram smkLoadProgramFromShaderAsset(const char *assetPath);
-
+smkShaderProgram smkLoadProgramFromShaderAsset(smkRenderer *renderer,
+                                               const char *assetPath);
 void smkDestroyProgram(smkShaderProgram *program);
+void smkUseProgram(smkRenderer *renderer, smkShaderProgram *program);
 
 typedef struct _smkTexture {
   ID3D11Texture2D *handle;
@@ -179,6 +180,7 @@ smkScene smkLoadSceneFromGLTFAsset(smkRenderer *renderer,
                                    const char *assetPath);
 void smkDestroyScene(smkScene *scene);
 smkScene smkMergeScene(const smkScene *a, const smkScene *b);
+void smkRenderScene(smkRenderer *renderer, const smkScene *scene);
 
 typedef struct _smkRenderCommand {
   Camera *viewCamera;

@@ -21,5 +21,6 @@ void moveCameraByInputs(Camera *cam);
 Float3 getLook(const Camera *cam);
 Float3 getRight(const Camera *cam);
 Mat4 getViewMatrix(const Camera *cam);
+Mat4 getProjMatrix(const Camera *camera);
 
 C_INTERFACE_END

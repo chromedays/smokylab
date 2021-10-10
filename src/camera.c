@@ -60,3 +60,9 @@ Float3 getRight(const Camera *cam) {
 Mat4 getViewMatrix(const Camera *cam) {
   return mat4LookAt(cam->pos, cam->pos + getLook(cam), DEFAULT_UP);
 }
+
+Mat4 getProjMatrix(const Camera *camera) {
+  Mat4 proj = mat4Perspective(camera->verticalFovDeg, camera->aspectRatio,
+                              camera->nearZ, camera->farZ);
+  return proj;
+}
