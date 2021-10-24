@@ -1136,7 +1136,12 @@ static smkMesh copyMesh(ID3D11Device *device, smkMesh *original) {
 }
 
 static smkEntity copyEntity(smkEntity *original) {
-  smkEntity copy = *original;
+  smkEntity copy = {};
+  copy.parent = original->parent;
+  copy.localTransform = original->localTransform;
+  copy.worldTransform = original->worldTransform;
+  copy.mesh = original->mesh;
+  copy.numChildren = original->numChildren;
   copyString(&copy.name, &original->name);
   copy.children = MMALLOC_ARRAY(int, copy.numChildren);
   memcpy(copy.children, original->children, copy.numChildren * sizeof(int));
