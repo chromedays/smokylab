@@ -6,13 +6,13 @@
 #include <stb_image.h>
 #pragma clang diagnostic pop
 
-static String gAssetRootPath;
-static String gShaderRootPath;
+static smkString gAssetRootPath;
+static smkString gShaderRootPath;
 
 void initAssetLoader(const char *assetRootPath, const char *shaderRootPath);
 
 void initAssetLoaderFromConfigFile(void) {
-  String assetConfigPath = {};
+  smkString assetConfigPath = {};
   copyBasePath(&assetConfigPath);
   appendPathCStr(&assetConfigPath, "asset_config.txt");
   FILE *assetConfigFile = fopen(assetConfigPath.buf, "r");
@@ -51,5 +51,5 @@ void destroyAssetLoader(void) {
   destroyString(&gAssetRootPath);
 }
 
-void copyAssetRootPath(String *path) { copyString(path, &gAssetRootPath); }
-void copyShaderRootPath(String *path) { copyString(path, &gShaderRootPath); }
+void copyAssetRootPath(smkString *path) { copyString(path, &gAssetRootPath); }
+void copyShaderRootPath(smkString *path) { copyString(path, &gShaderRootPath); }

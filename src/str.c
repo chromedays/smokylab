@@ -4,12 +4,12 @@
 #include <SDL2/SDL.h>
 #pragma clang diagnostic pop
 
-void destroyString(String *str) {
+void destroyString(smkString *str) {
   MFREE(str->buf);
-  *str = (String){};
+  *str = (smkString){};
 }
 
-bool compareString(const String *a, const String *b) {
+bool compareString(const smkString *a, const smkString *b) {
   bool result = false;
 
   if (a->len == b->len) {
@@ -19,7 +19,7 @@ bool compareString(const String *a, const String *b) {
   return result;
 }
 
-static void tryExpand(String *str, int newLen) {
+static void tryExpand(smkString *str, int newLen) {
   if (str->cap < newLen + 1) {
     int newCap = MAX(str->cap, 1);
     do {
@@ -35,7 +35,7 @@ static void tryExpand(String *str, int newLen) {
   }
 }
 
-void appendCStr(String *str, const char *toAppend) {
+void appendCStr(smkString *str, const char *toAppend) {
   int offset = str->len;
   int appendLen = (int)strlen(toAppend);
   int newLen = str->len + appendLen;
@@ -46,7 +46,7 @@ void appendCStr(String *str, const char *toAppend) {
   str->buf[str->len] = 0;
 }
 
-void appendString(String *str, const String *toAppend) {
+void appendString(smkString *str, const smkString *toAppend) {
   int offset = str->len;
   int appendLen = toAppend->len;
   int newLen = str->len + appendLen;
@@ -57,7 +57,7 @@ void appendString(String *str, const String *toAppend) {
   str->buf[str->len] = 0;
 }
 
-void copyStringFromCStr(String *dst, const char *src) {
+void copyStringFromCStr(smkString *dst, const char *src) {
   int srcLen = (int)strlen(src);
   tryExpand(dst, srcLen);
   memcpy(dst->buf, src, castI32U32(srcLen));
@@ -65,7 +65,7 @@ void copyStringFromCStr(String *dst, const char *src) {
   dst->len = srcLen;
 }
 
-void copyString(String *dst, const String *src) {
+void copyString(smkString *dst, const smkString *src) {
   tryExpand(dst, src->len);
   memcpy(dst->buf, src->buf, castI32U32(src->len));
   dst->buf[src->len] = 0;
@@ -77,13 +77,13 @@ static bool isSeparator(char ch) {
   return result;
 }
 
-void copyBasePath(String *path) {
+void copyBasePath(smkString *path) {
   char *tmp = SDL_GetBasePath();
   copyStringFromCStr(path, tmp);
   SDL_free(tmp);
 }
 
-void appendPathCStr(String *str, const char *path) {
+void appendPathCStr(smkString *str, const char *path) {
   while (*path && isSeparator(*path)) {
     ++path;
   }
@@ -95,7 +95,7 @@ void appendPathCStr(String *str, const char *path) {
   appendCStr(str, path);
 }
 
-const char *pathBaseName(const String *str) {
+const char *pathBaseName(const smkString *str) {
   int i = str->len - 1;
   while (isSeparator(str->buf[i]) && i >= 0) {
     --i;
@@ -108,7 +108,7 @@ const char *pathBaseName(const String *str) {
   return i >= 0 ? &str->buf[i + 1] : "";
 }
 
-bool endsWithCString(const String *str, const char *ch) {
+bool endsWithCString(const smkString *str, const char *ch) {
   int chlen = (int)strlen(ch);
 
   if (str->len < chlen) {

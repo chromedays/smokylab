@@ -4,18 +4,18 @@
 
 C_INTERFACE_BEGIN
 
-typedef struct _String {
+typedef struct _smkString {
   int len;
   int cap;
   char *buf;
-} String;
+} smkString;
 
-void destroyString(String *str);
-bool compareString(const String *a, const String *b);
-void appendCStr(String *str, const char *toAppend);
-void appendString(String *str, const String *toAppend);
-void copyStringFromCStr(String *dst, const char *src);
-void copyString(String *dst, const String *src);
+void destroyString(smkString *str);
+bool compareString(const smkString *a, const smkString *b);
+void appendCStr(smkString *str, const char *toAppend);
+void appendString(smkString *str, const smkString *toAppend);
+void copyStringFromCStr(smkString *dst, const char *src);
+void copyString(smkString *dst, const smkString *src);
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-macros"
 #define FORMAT_STRING(dst, ...)                                                \
@@ -27,11 +27,11 @@ void copyString(String *dst, const String *src);
   } while (0)
 #pragma clang diagnostic pop
 
-void copyBasePath(String *path);
+void copyBasePath(smkString *path);
 
-void appendPathCStr(String *str, const char *path);
-const char *pathBaseName(const String *str);
+void appendPathCStr(smkString *str, const char *path);
+const char *pathBaseName(const smkString *str);
 
-bool endsWithCString(const String *str, const char *ch);
+bool endsWithCString(const smkString *str, const char *ch);
 
 C_INTERFACE_END

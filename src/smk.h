@@ -169,7 +169,7 @@ typedef struct _smkTransform {
 } smkTransform;
 
 typedef struct _smkEntity {
-  String name;
+  smkString name;
 
   int parent;
 

@@ -258,7 +258,7 @@ typedef struct _smkFileData {
   int size;
 } smkFileData;
 
-static smkFileData readFile(const String *filePath) {
+static smkFileData readFile(const smkString *filePath) {
   smkFileData fileData = {};
 
   HANDLE f = CreateFileA(filePath->buf, GENERIC_READ, 0, NULL, OPEN_EXISTING,
@@ -286,10 +286,10 @@ smkShaderProgram loadProgramFromShaderAsset(ID3D11Device *device,
 
   smkShaderProgram program = {};
 
-  String basePath = {};
+  smkString basePath = {};
   copyShaderRootPath(&basePath);
 
-  String vertexShaderPath = {};
+  smkString vertexShaderPath = {};
   copyString(&vertexShaderPath, &basePath);
   appendPathCStr(&vertexShaderPath, assetPath);
   appendCStr(&vertexShaderPath, ".vs.cso");
@@ -297,7 +297,7 @@ smkShaderProgram loadProgramFromShaderAsset(ID3D11Device *device,
   LOG("Opening vertex shader at %s", vertexShaderPath.buf);
   smkFileData vertexShaderSource = readFile(&vertexShaderPath);
 
-  String fragmentShaderPath = {};
+  smkString fragmentShaderPath = {};
   copyString(&fragmentShaderPath, &basePath);
   appendPathCStr(&fragmentShaderPath, assetPath);
   appendCStr(&fragmentShaderPath, ".fs.cso");
@@ -645,10 +645,10 @@ smkScene smkLoadSceneFromGLTFAsset(smkRenderer *renderer,
 
   smkScene scene = {};
 
-  String filePath = {};
-  String basePath = {};
+  smkString filePath = {};
+  smkString basePath = {};
   {
-    String pathString = {};
+    smkString pathString = {};
     copyStringFromCStr(&pathString, assetPath);
 
     copyAssetRootPath(&filePath);
@@ -676,7 +676,7 @@ smkScene smkLoadSceneFromGLTFAsset(smkRenderer *renderer,
   if (scene.numTextures > 0) {
     scene.textures = MMALLOC_ARRAY(smkTexture, scene.numTextures);
 
-    String imageFilePath = {};
+    smkString imageFilePath = {};
     for (cgltf_size textureIndex = 0; textureIndex < gltf->images_count;
          ++textureIndex) {
       cgltf_image *gltfImage = &gltf->images[textureIndex];

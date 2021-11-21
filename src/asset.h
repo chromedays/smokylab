@@ -10,7 +10,7 @@ C_INTERFACE_BEGIN
 void initAssetLoaderFromConfigFile(void);
 void destroyAssetLoader(void);
 
-void copyAssetRootPath(String *path);
-void copyShaderRootPath(String *path);
+void copyAssetRootPath(smkString *path);
+void copyShaderRootPath(smkString *path);
 
 C_INTERFACE_END
