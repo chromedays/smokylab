@@ -1318,8 +1318,58 @@ static void smkRenderMesh(smkRenderer *renderer, const smkScene *scene,
   }
 }
 
-void smkRenderScene(smkRenderer *renderer, const smkScene *scene) {
+void smkRenderScene(smkRenderer *renderer, const smkScene *scene,
+                    const Camera *camera) {
   ASSERT(renderer);
+
+  smkViewUniforms viewUniforms = {};
+  viewUniforms.viewMat = getViewMatrix(camera);
+  viewUniforms.projMat = getProjMatrix(camera);
+  renderer->context->UpdateSubresource(renderer->viewUniformBuffer.handle, 0,
+                                       NULL, &viewUniforms, 0, 0);
+
+  int windowWidth, windowHeight;
+  SDL_GetWindowSize(gApp.window, &windowWidth, &windowHeight);
+
+  D3D11_VIEWPORT viewport = {
+      .TopLeftX = 0,
+      .TopLeftY = 0,
+      .Width = (FLOAT)windowWidth,
+      .Height = (FLOAT)windowHeight,
+      .MinDepth = 0,
+      .MaxDepth = 1,
+  };
+  renderer->context->RSSetViewports(1, &viewport);
+
+  Float4 clearColor = {0.5f, 0.5f, 1, 1};
+  renderer->context->OMSetRenderTargets(1, &renderer->swapChainRTV,
+                                        renderer->swapChainDSV);
+  renderer->context->ClearRenderTargetView(renderer->swapChainRTV,
+                                           (FLOAT *)&clearColor);
+  renderer->context->ClearDepthStencilView(renderer->swapChainDSV,
+                                           D3D11_CLEAR_DEPTH, 0, 0);
+
+  renderer->context->RSSetState(renderer->defaultRasterizerState);
+  renderer->context->IASetPrimitiveTopology(
+      D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+  renderer->context->OMSetDepthStencilState(renderer->defaultDepthStencilState,
+                                            0);
+  renderer->context->OMSetBlendState(NULL, NULL, 0xFFFFFFFF);
+
+  ID3D11Buffer *uniformBuffers[] = {renderer->viewUniformBuffer.handle,
+                                    renderer->drawUniformBuffer.handle,
+                                    renderer->materialUniformBuffer.handle};
+
+  renderer->context->VSSetConstantBuffers(0, ARRAY_SIZE(uniformBuffers),
+                                          uniformBuffers);
+  renderer->context->PSSetConstantBuffers(0, ARRAY_SIZE(uniformBuffers),
+                                          uniformBuffers);
+
+  renderer->context->IASetInputLayout(renderer->forwardPBRProgram.vertexLayout);
+  renderer->context->VSSetShader(renderer->forwardPBRProgram.vertexShader, NULL,
+                                 0);
+  renderer->context->PSSetShader(renderer->forwardPBRProgram.fragmentShader,
+                                 NULL, 0);
 
   renderer->context->IASetPrimitiveTopology(
       D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -1364,6 +1414,11 @@ void smkSubmitRenderCommands(smkRenderer *renderer, int numRenderCommands,
 
   //   lastCommand = command;
   // }
+}
+
+void smkSwapBuffers(smkRenderer *renderer) {
+  ASSERT(renderer);
+  renderer->swapChain->Present(0, 0);
 }
 
 void smkInitGUI(smkRenderer *renderer) {

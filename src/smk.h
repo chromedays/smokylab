@@ -204,7 +204,8 @@ smkScene smkLoadSceneFromGLTFAsset(smkRenderer *renderer,
 void smkDestroyScene(smkScene *scene);
 smkScene smkMergeScene(smkRenderer *renderer, const smkScene *sceneA,
                        const smkScene *sceneB);
-void smkRenderScene(smkRenderer *renderer, const smkScene *scene);
+void smkRenderScene(smkRenderer *renderer, const smkScene *scene,
+                    const Camera *camera);
 
 typedef struct _smkRenderCommand {
   Camera *viewCamera;
@@ -213,6 +214,8 @@ typedef struct _smkRenderCommand {
 
 void smkSubmitRenderCommands(smkRenderer *renderer, int numRenderCommands,
                              smkRenderCommand *renderCommands);
+
+void smkSwapBuffers(smkRenderer *renderer);
 
 //
 // GUI
