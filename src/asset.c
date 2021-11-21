@@ -4,7 +4,6 @@
 #pragma clang diagnostic ignored "-Weverything"
 #include <cgltf.h>
 #include <stb_image.h>
-#include <Windows.h>
 #pragma clang diagnostic pop
 
 static String gAssetRootPath;

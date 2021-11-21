@@ -79,6 +79,7 @@
   } while (0)
 #endif
 
+#ifdef SMK_WINDOWS
 #define LOG(...)                                                               \
   do {                                                                         \
     char buf[512] = {};                                                        \
@@ -86,6 +87,13 @@
     OutputDebugStringA(buf);                                                   \
     OutputDebugStringA("\n");                                                  \
   } while (0)
+#else
+#define LOG(...)                                                               \
+  do {                                                                         \
+    printf(__VA_ARGS__);                                                       \
+    printf("\n");                                                              \
+  } while (0);
+#endif
 
 #ifndef MAX
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
@@ -111,62 +119,62 @@
 
 C_INTERFACE_BEGIN
 
-inline uint32_t castI32U32(int32_t value) {
+static inline uint32_t castI32U32(int32_t value) {
   ASSERT(value >= 0);
   return (uint32_t)value;
 }
 
-inline size_t castI32Usize(int32_t value) {
+static inline size_t castI32Usize(int32_t value) {
   ASSERT(value >= 0);
   return (size_t)value;
 }
 
-inline int32_t castI64I32(int64_t value) {
+static inline int32_t castI64I32(int64_t value) {
   ASSERT(value <= 0x7FFFFFFFll);
   return (int32_t)value;
 }
 
-inline uint32_t castI64U32(int64_t value) {
+static inline uint32_t castI64U32(int64_t value) {
   ASSERT(value >= 0 && value <= 0xFFFFFFFFll);
   return (uint32_t)value;
 }
 
-inline int32_t castU32I32(uint32_t value) {
+static inline int32_t castU32I32(uint32_t value) {
   ASSERT(value <= 0x7FFFFFFFu);
   return (int32_t)value;
 }
 
-inline int32_t castU64I32(uint64_t value) {
+static inline int32_t castU64I32(uint64_t value) {
   ASSERT(value <= 0x7FFFFFFFull);
   return (int32_t)value;
 }
 
-inline uint32_t castU64U32(uint64_t value) {
+static inline uint32_t castU64U32(uint64_t value) {
   ASSERT(value <= 0xFFFFFFFFull);
   return (uint32_t)value;
 }
 
-inline int32_t castUsizeI32(size_t value) {
+static inline int32_t castUsizeI32(size_t value) {
   STATIC_ASSERT(sizeof(value) == 8);
   return castU64I32(value);
 }
 
-inline uint32_t castUsizeU32(size_t value) {
+static inline uint32_t castUsizeU32(size_t value) {
   STATIC_ASSERT(sizeof(value) == 8);
   return castU64U32(value);
 }
 
-inline uint32_t castSsizeU32(ptrdiff_t value) {
+static inline uint32_t castSsizeU32(ptrdiff_t value) {
   STATIC_ASSERT(sizeof(value) == 8);
   return castI64U32(value);
 }
 
-inline int32_t castSsizeI32(ptrdiff_t value) {
+static inline int32_t castSsizeI32(ptrdiff_t value) {
   STATIC_ASSERT(sizeof(value) == 8);
   return castI64I32(value);
 }
 
-inline uint32_t castFloatToU32(float value) {
+static inline uint32_t castFloatToU32(float value) {
   ASSERT(value >= 0.f);
   return (uint32_t)value;
 }

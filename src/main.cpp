@@ -5,7 +5,9 @@
 #include "smk.h"
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Weverything"
+#ifdef SMK_WINDOWS
 #include <Windows.h>
+#endif
 #define CGLTF_IMPLEMENTATION
 #include <cgltf.h>
 #define STB_IMAGE_IMPLEMENTATION

@@ -10,15 +10,14 @@ add_executable(
   camera.cpp
   "${SMOKYLAB_DEP_DIR}/imgui/imgui_demo.cpp"
   "${SMOKYLAB_DEP_DIR}/imgui/imgui_draw.cpp"
-  "${SMOKYLAB_DEP_DIR}/imgui/imgui_impl_dx11.cpp"
   "${SMOKYLAB_DEP_DIR}/imgui/imgui_impl_sdl.cpp"
   "${SMOKYLAB_DEP_DIR}/imgui/imgui_tables.cpp"
   "${SMOKYLAB_DEP_DIR}/imgui/imgui_widgets.cpp"
   "${SMOKYLAB_DEP_DIR}/imgui/imgui.cpp")
 
 target_include_directories(smokylab PUBLIC "${SMOKYLAB_DEP_DIR}")
-target_link_directories(smokylab PUBLIC "${SMOKYLAB_DEP_DIR}/SDL2")
 if(WIN32)
+  target_link_directories(smokylab PUBLIC "${SMOKYLAB_DEP_DIR}/SDL2")
   target_link_libraries(
     smokylab
     PUBLIC SDL2.lib
@@ -32,11 +31,15 @@ if(WIN32)
     PUBLIC d3dcompiler.lib
     PUBLIC winmm.lib
     PUBLIC Shcore.lib)
+elseif(APPLE)
+  find_library(SDL2_FRAMEWORK SDL2 "${SMOKYLAB_DEP_DIR}")
+  target_link_libraries(smokylab PUBLIC ${SDL2_FRAMEWORK})
 endif()
 
 if(WIN32)
   target_compile_definitions(smokylab PRIVATE SMK_WINDOWS=1 SMK_DIRECTX11=1)
-  target_sources(smokylab PRIVATE smk.cpp)
+  target_sources(
+    smokylab PRIVATE smk.cpp "${SMOKYLAB_DEP_DIR}/imgui/imgui_impl_dx11.cpp")
 elseif(APPLE)
   target_compile_definitions(smokylab PRIVATE SMK_MACOS=1 SMK_NULL=1)
   target_sources(smokylab PRIVATE smk_render_null.cpp)
@@ -75,18 +78,20 @@ add_custom_command(
   COMMAND ${CMAKE_COMMAND} -E copy "${SMOKYLAB_DEP_DIR}/SDL2/SDL2.dll"
           $<TARGET_FILE_DIR:smokylab>)
 
-add_custom_command(
-  TARGET smokylab
-  POST_BUILD
-  COMMAND python3 "${SMOKYLAB_SCRIPT_DIR}/post_build.py"
-          "$<TARGET_FILE_DIR:smokylab>/post_build_config.txt"
-  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+if(WIN32)
+  add_custom_command(
+    TARGET smokylab
+    POST_BUILD
+    COMMAND python3 "${SMOKYLAB_SCRIPT_DIR}/post_build.py"
+            "$<TARGET_FILE_DIR:smokylab>/post_build_config.txt"
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 
-file(
-  GENERATE
-  OUTPUT "$<TARGET_FILE_DIR:smokylab>/post_build_config.txt"
-  CONTENT "${SMOKYLAB_ROOT}/shaders
+  file(
+    GENERATE
+    OUTPUT "$<TARGET_FILE_DIR:smokylab>/post_build_config.txt"
+    CONTENT "${SMOKYLAB_ROOT}/shaders
 $<TARGET_FILE_DIR:smokylab>")
+endif()
 
 file(
   GENERATE
