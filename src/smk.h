@@ -4,8 +4,10 @@
 #include "camera.h"
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Weverything"
+#ifdef SMK_WINDOWS
 #include <d3d11_1.h>
 #include <d3d12.h>
+#endif
 #pragma clang diagnostic pop
 
 C_INTERFACE_BEGIN

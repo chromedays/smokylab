@@ -4,7 +4,7 @@ add_executable(
   smokylab
   app.c
   main.cpp
-  render.cpp
+  # render.cpp
   str.c
   vmath.c
   asset.c
@@ -20,32 +20,41 @@ add_executable(
   "${SMOKYLAB_DEP_DIR}/imgui/imgui_tables.cpp"
   "${SMOKYLAB_DEP_DIR}/imgui/imgui_widgets.cpp"
   "${SMOKYLAB_DEP_DIR}/imgui/imgui.cpp")
+
 target_include_directories(smokylab PUBLIC "${SMOKYLAB_DEP_DIR}")
 target_link_directories(smokylab PUBLIC "${SMOKYLAB_DEP_DIR}/SDL2")
-target_link_libraries(
-  smokylab
-  # PUBLIC clang_rt.asan-x86_64.lib
-  PUBLIC SDL2.lib
-  PUBLIC SDL2main.lib
-  PUBLIC gdi32.lib
-  PUBLIC Shell32.lib
-  PUBLIC d3d12.lib
-  PUBLIC d3d11.lib
-  PUBLIC dxgi.lib
-  PUBLIC dxguid.lib
-  PUBLIC d3dcompiler.lib
-  PUBLIC winmm.lib
-  PUBLIC Shcore.lib)
+if(WIN32)
+  target_link_libraries(
+    smokylab
+    PUBLIC SDL2.lib
+    PUBLIC SDL2main.lib
+    PUBLIC gdi32.lib
+    PUBLIC Shell32.lib
+    PUBLIC d3d12.lib
+    PUBLIC d3d11.lib
+    PUBLIC dxgi.lib
+    PUBLIC dxguid.lib
+    PUBLIC d3dcompiler.lib
+    PUBLIC winmm.lib
+    PUBLIC Shcore.lib)
+endif()
+
+if(WIN32)
+  target_compile_definitions(smokylab PRIVATE SMK_WINDOWS=1 SMK_DIRECTX11=1)
+elseif(APPLE)
+  target_compile_definitions(smokylab PRIVATE SMK_MACOS=1 SMK_METAL=1)
+endif()
 
 set_property(TARGET smokylab PROPERTY CXX_STANDARD 20)
-set_property(TARGET smokylab PROPERTY C_STANDARD 17)
+if(WIN32)
+  set_property(TARGET smokylab PROPERTY C_STANDARD 17)
+else()
+  set_property(TARGET smokylab PROPERTY C_STANDARD 11)
+endif()
 
 target_compile_options(
   smokylab
-  PRIVATE -Zi
-          -Od
-          -MT
-          # -fsanitize=address
+  PRIVATE # -fsanitize=address
           -Wall
           -Wextra
           -Wpedantic
@@ -56,6 +65,9 @@ target_compile_options(
           -Wno-zero-as-null-pointer-constant
           -Wno-language-extension-token
           -Wno-double-promotion)
+if(WIN32)
+  target_compile_options(smokylab PRIVATE -Zi -Od -MT)
+endif()
 
 target_compile_definitions(smokylab PUBLIC _CRT_SECURE_NO_WARNINGS)
 target_compile_definitions(smokylab PUBLIC "$<$<CONFIG:DEBUG>:DEBUG>")
