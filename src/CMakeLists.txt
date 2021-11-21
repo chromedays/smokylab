@@ -41,8 +41,8 @@ if(WIN32)
   target_sources(
     smokylab PRIVATE smk.cpp "${SMOKYLAB_DEP_DIR}/imgui/imgui_impl_dx11.cpp")
 elseif(APPLE)
-  target_compile_definitions(smokylab PRIVATE SMK_MACOS=1 SMK_NULL=1)
-  target_sources(smokylab PRIVATE smk_render_null.cpp)
+  target_compile_definitions(smokylab PRIVATE SMK_MACOS=1 SMK_METAL=1)
+  target_sources(smokylab PRIVATE smk_render_metal.cpp)
 endif()
 
 set_property(TARGET smokylab PROPERTY CXX_STANDARD 20)
