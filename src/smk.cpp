@@ -455,8 +455,7 @@ smkRenderer smkCreateRenderer(void) {
   renderer.swapChainDepthTexture = createTexture2D(
       renderer.device, renderer.context, windowWidth, windowHeight,
       DXGI_FORMAT_R32_TYPELESS, D3D11_USAGE_DEFAULT,
-      GPUResourceBindBits_DEPTH_STENCIL | GPUResourceBindBits_SHADER_RESOURCE,
-      false, NULL);
+      D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE, false, NULL);
 
   D3D11_DEPTH_STENCIL_VIEW_DESC depthStencilViewDesc = {
       .Format = DXGI_FORMAT_D32_FLOAT,
@@ -875,7 +874,7 @@ smkScene smkLoadSceneFromGLTFAsset(smkRenderer *renderer,
 
         uint32_t maxIndex = 0;
         for (cgltf_size i = 0; i < prim->indices->count; ++i) {
-          VertexIndex index =
+          uint32_t index =
               castUsizeU32(cgltf_accessor_read_index(prim->indices, i));
           if (maxIndex < index) {
             maxIndex = index;

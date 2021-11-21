@@ -1,11 +1,7 @@
-#include "render.h"
 #include "util.h"
-#include "editor_gui.h"
 #include "asset.h"
 #include "camera.h"
 #include "app.h"
-#include "editor.h"
-#include "resource.h"
 #include "smk.h"
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Weverything"

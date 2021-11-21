@@ -4,7 +4,7 @@
 #include "camera.h"
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Weverything"
-#ifdef SMK_WINDOWS
+#ifdef SMK_DIRECTX11
 #include <d3d11_1.h>
 #include <d3d12.h>
 #endif
@@ -15,9 +15,11 @@ C_INTERFACE_BEGIN
 FORWARD_DECL(smkRenderer);
 
 typedef struct _smkShaderProgram {
+#ifdef SMK_DIRECTX11
   ID3D11VertexShader *vertexShader;
   ID3D11InputLayout *vertexLayout;
   ID3D11PixelShader *fragmentShader;
+#endif
 } smkShaderProgram;
 
 smkShaderProgram smkLoadProgramFromShaderAsset(smkRenderer *renderer,
@@ -26,25 +28,31 @@ void smkDestroyProgram(smkShaderProgram *program);
 void smkUseProgram(smkRenderer *renderer, smkShaderProgram *program);
 
 typedef struct _smkTexture {
+#ifdef SMK_DIRECTX11
   D3D11_TEXTURE2D_DESC desc;
   ID3D11Texture2D *handle;
   ID3D11ShaderResourceView *view;
+#endif
 } smkTexture;
 
-smkTexture smkCreateTexture2D(smkRenderer *renderer, int width, int height,
-                              DXGI_FORMAT format, D3D11_USAGE usage,
-                              uint32_t bindFlags, bool generateMipMaps,
-                              void *initialData);
+// smkTexture smkCreateTexture2D(smkRenderer *renderer, int width, int height,
+//                               DXGI_FORMAT format, D3D11_USAGE usage,
+//                               uint32_t bindFlags, bool generateMipMaps,
+//                               void *initialData);
 void smkDestroyTexture(smkTexture *texture);
 
 typedef struct _smkSampler {
+#ifdef SMK_DIRECTX11
   D3D11_SAMPLER_DESC desc;
   ID3D11SamplerState *handle;
+#endif
 } smkSampler;
 
 typedef struct _smkBuffer {
+#ifdef SMK_DIRECTX11
   D3D11_BUFFER_DESC desc;
   ID3D11Buffer *handle;
+#endif
 } smkBuffer;
 
 typedef struct _smkViewUniforms {
@@ -68,6 +76,7 @@ typedef struct _smkCameraVolumeVertexData {
 } smkCameraVolumeVertexData;
 
 typedef struct _smkRenderer {
+#ifdef SMK_DIRECTX11
 #ifdef DEBUG
   ID3D12Device *dummyDeviceForFixedGPUClock;
 #endif
@@ -99,7 +108,7 @@ typedef struct _smkRenderer {
   ID3D11Query *profilerTimestampBeginQuery;
   ID3D11Query *profilerTimestampEndQuery;
 #endif
-
+#endif
 } smkRenderer;
 
 smkRenderer smkCreateRenderer(void);

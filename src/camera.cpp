@@ -1,10 +1,21 @@
 #include "camera.h"
 #include "app.h"
-#include "editor_gui.h"
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Weverything"
+#include <imgui/imgui.h>
+#include <imgui/imgui_internal.h>
+#ifdef SMK_DIRECTX11
+#include <imgui/imgui_impl_dx11.h>
+#endif
+#include <imgui/imgui_impl_sdl.h>
+#pragma clang diagnostic pop
+
 #include <math.h>
 
 void initCameraLookingAtTarget(Camera *cam, Float3 pos, Float3 target) {
-  *cam = (Camera){.pos = pos};
+  *cam = {};
+  cam->pos = pos;
   Float3 look = target - pos;
   // TODO: Assert when length of look.xz = 0
   // TODO: Use radians for pitch and yaw
@@ -18,7 +29,7 @@ void initCameraLookingAtTarget(Camera *cam, Float3 pos, Float3 target) {
 }
 
 void moveCameraByInputs(Camera *cam) {
-  if (gApp.input.mouseDown && !guiWantsCaptureMouse()) {
+  if (gApp.input.mouseDown && !ImGui::GetIO().WantCaptureMouse) {
     cam->yaw += (float)gApp.input.cursorDeltaX * 0.6f;
     cam->pitch -= (float)gApp.input.cursorDeltaY * 0.6f;
     cam->pitch = CLAMP(cam->pitch, -88.f, 88.f);

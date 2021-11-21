@@ -1,5 +1,4 @@
 #include "app.h"
-#include "editor_gui.h"
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Weverything"
