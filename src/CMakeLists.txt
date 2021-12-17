@@ -33,7 +33,8 @@ if(WIN32)
     PUBLIC Shcore.lib)
 elseif(APPLE)
   find_library(SDL2_FRAMEWORK SDL2 "${SMOKYLAB_DEP_DIR}")
-  target_link_libraries(smokylab PUBLIC ${SDL2_FRAMEWORK})
+  target_link_libraries(
+    smokylab PUBLIC ${SDL2_FRAMEWORK} "-framework Metal -framework Foundation")
 endif()
 
 if(WIN32)
@@ -42,7 +43,7 @@ if(WIN32)
     smokylab PRIVATE smk.cpp "${SMOKYLAB_DEP_DIR}/imgui/imgui_impl_dx11.cpp")
 elseif(APPLE)
   target_compile_definitions(smokylab PRIVATE SMK_MACOS=1 SMK_METAL=1)
-  target_sources(smokylab PRIVATE smk_render_metal.cpp)
+  target_sources(smokylab PRIVATE metal_bindings.mm smk_render_metal.mm)
 endif()
 
 set_property(TARGET smokylab PROPERTY CXX_STANDARD 20)
