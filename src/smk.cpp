@@ -3,13 +3,13 @@
 #include "app.h"
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Weverything"
-#include <imgui/imgui.h>
-#include <imgui/imgui_internal.h>
-#include <imgui/imgui_impl_dx11.h>
-#include <imgui/imgui_impl_sdl.h>
+#include <imgui.h>
+#include <imgui_internal.h>
+#include <imgui_impl_dx11.h>
+#include <imgui_impl_sdl.h>
 #include <cgltf.h>
 #include <stb_image.h>
-#include <SDL2/SDL.h>
+#include <SDL.h>
 #include <SDL2/SDL_syswm.h>
 #include <dxgidebug.h>
 #include <d3dcompiler.h>

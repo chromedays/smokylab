@@ -2,7 +2,7 @@
 #include "util.h"
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Weverything"
-#include <SDL2/SDL.h>
+#include <SDL.h>
 #pragma clang diagnostic pop
 
 typedef struct _App {

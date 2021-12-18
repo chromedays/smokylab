@@ -3,11 +3,11 @@
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Weverything"
 #ifdef SMK_METAL
-#include <SDL2/SDL_metal.h>
-#include <Metal.hpp>
+#include <SDL_metal.h>
+#import <Metal/Metal.h>
 #import <QuartzCore/CAMetalLayer.h>
 #endif
-#include <imgui/imgui.h>
+#include <imgui.h>
 #pragma clang diagnostic pop
 
 C_INTERFACE_BEGIN
@@ -22,11 +22,10 @@ void smkUseProgram(smkRenderer *renderer, smkShaderProgram *program) {}
 void smkDestroyTexture(smkTexture *texture) {}
 
 smkRenderer smkCreateRenderer(void) {
-  MTL::Device *device = MTL::CreateSystemDefaultDevice();
+  id<MTLDevice> device = MTLCreateSystemDefaultDevice();
   SDL_MetalView metalView = SDL_Metal_CreateView(gApp.window);
   CAMetalLayer *metalLayer =
       (__bridge CAMetalLayer *)SDL_Metal_GetLayer(metalView);
-  device->release();
   return {};
 }
 void smkDestroyRenderer(smkRenderer *renderer) {}

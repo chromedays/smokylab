@@ -3,12 +3,12 @@
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Weverything"
-#include <imgui/imgui.h>
-#include <imgui/imgui_internal.h>
+#include <imgui.h>
+#include <imgui_internal.h>
 #ifdef SMK_DIRECTX11
-#include <imgui/imgui_impl_dx11.h>
+#include <imgui_impl_dx11.h>
 #endif
-#include <imgui/imgui_impl_sdl.h>
+#include <backends/imgui_impl_sdl.h>
 #pragma clang diagnostic pop
 
 #include <math.h>

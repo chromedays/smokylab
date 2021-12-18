@@ -2,7 +2,7 @@
 
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Weverything"
-#include <imgui/imgui.h>
+#include <imgui.h>
 #pragma clang diagnostic pop
 
 C_INTERFACE_BEGIN

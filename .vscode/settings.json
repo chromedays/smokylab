@@ -1,0 +1,8 @@
+{
+    "cmake.configureArgs": [
+        "-DCPM_SOURCE_CACHE=~/.cache/CPM"
+    ],
+    "clangd.arguments": [
+        "--compile-commands-dir=${workspaceFolder}/build"
+    ]
+}
