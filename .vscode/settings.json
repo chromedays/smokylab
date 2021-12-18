@@ -3,6 +3,7 @@
         "-DCPM_SOURCE_CACHE=~/.cache/CPM"
     ],
     "clangd.arguments": [
+        "-header-insertion=never",
         "--compile-commands-dir=${workspaceFolder}/build"
     ]
 }
