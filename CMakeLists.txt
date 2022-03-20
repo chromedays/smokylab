@@ -44,6 +44,17 @@ cpmaddpackage(
   nothings/stb
   DOWNLOAD_ONLY
   TRUE)
+if(APPLE)
+  cpmaddpackage(
+    NAME
+    metalcpp
+    GIT_TAG
+    metal-cpp_macOS12_iOS15
+    GITHUB_REPOSITORY
+    bkaradzic/metal-cpp
+    DOWNLOAD_ONLY
+    TRUE)
+endif()
 
 if(imgui_ADDED)
   add_library(imgui STATIC)
@@ -85,6 +96,10 @@ if(stb_ADDED)
   add_library(stb INTERFACE)
   target_include_directories(stb INTERFACE "${stb_SOURCE_DIR}")
 endif()
+if(metalcpp_ADDED)
+  add_library(metalcpp INTERFACE)
+  target_include_directories(stb INTERFACE "${metalcpp_SOURCE_DIR}")
+endif()
 
 project(smokylab LANGUAGES C CXX OBJC OBJCXX)
 add_executable(
@@ -100,8 +115,9 @@ if(APPLE)
   # target_sources( smokylab PRIVATE
   # "${CMAKE_CURRENT_SOURCE_DIR}/src/metal_bindings.mm"
   # "${CMAKE_CURRENT_SOURCE_DIR}/src/smk_render_metal.mm")
-  target_sources(smokylab
-                 PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/smk_render_metal.mm")
+  target_sources(
+    smokylab PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/smk_render_metal.mm"
+                     "${CMAKE_CURRENT_SOURCE_DIR}/src/smk_render_metal_aux.mm")
 endif()
 
 target_link_libraries(smokylab PRIVATE SDL2 imgui cgltf cute_headers stb)
@@ -155,20 +171,18 @@ endif()
 target_compile_definitions(smokylab PRIVATE _CRT_SECURE_NO_WARNINGS)
 target_compile_definitions(smokylab PRIVATE "$<$<CONFIG:DEBUG>:DEBUG>")
 
-if(WIN32)
-  add_custom_command(
-    TARGET smokylab
-    POST_BUILD
-    COMMAND python3 "${CMAKE_CURRENT_SOURCE_DIR}/scripts/post_build.py"
-            "$<TARGET_FILE_DIR:smokylab>/post_build_config.txt"
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+add_custom_command(
+  TARGET smokylab
+  POST_BUILD
+  COMMAND python3 "${CMAKE_CURRENT_SOURCE_DIR}/scripts/post_build.py"
+          "$<TARGET_FILE_DIR:smokylab>/post_build_config.txt"
+  WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 
-  file(
-    GENERATE
-    OUTPUT "$<TARGET_FILE_DIR:smokylab>/post_build_config.txt"
-    CONTENT "${CMAKE_CURRENT_SOURCE_DIR}/shaders
+file(
+  GENERATE
+  OUTPUT "$<TARGET_FILE_DIR:smokylab>/post_build_config.txt"
+  CONTENT "${CMAKE_CURRENT_SOURCE_DIR}/shaders
 $<TARGET_FILE_DIR:smokylab>")
-endif()
 
 file(
   GENERATE

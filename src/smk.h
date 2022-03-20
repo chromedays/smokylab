@@ -7,6 +7,9 @@
 #ifdef SMK_DIRECTX11
 #include <d3d11_1.h>
 #include <d3d12.h>
+#elif defined(SMK_METAL)
+#include <SDL_metal.h>
+#include <SingleHeader/Metal.hpp>
 #endif
 #pragma clang diagnostic pop
 
@@ -108,6 +111,14 @@ typedef struct _smkRenderer {
   ID3D11Query *profilerTimestampBeginQuery;
   ID3D11Query *profilerTimestampEndQuery;
 #endif
+#elif defined(SMK_METAL)
+  MTL::Device *device;
+  SDL_MetalView view;
+  CA::MetalDrawable *currentDrawable;
+  MTL::CommandQueue *commandQueue;
+  MTL::CommandBuffer *currentCommandBuffer;
+  MTL::RenderCommandEncoder *currentCommandEncoder;
+  MTL::RenderPassDescriptor* drawableRenderDescriptor;
 #endif
 } smkRenderer;
 
@@ -215,7 +226,8 @@ typedef struct _smkRenderCommand {
 void smkSubmitRenderCommands(smkRenderer *renderer, int numRenderCommands,
                              smkRenderCommand *renderCommands);
 
-void smkSwapBuffers(smkRenderer *renderer);
+void smkBeginRender(smkRenderer *renderer);
+void smkEndRender(smkRenderer *renderer);
 
 //
 // GUI

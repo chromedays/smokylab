@@ -1416,7 +1416,11 @@ void smkSubmitRenderCommands(smkRenderer *renderer, int numRenderCommands,
   // }
 }
 
-void smkSwapBuffers(smkRenderer *renderer) {
+void smkBeginRender(smkRenderer* renderer) {
+  ASSERT(renderer);
+}
+
+void smkEndRender(smkRenderer* renderer) {
   ASSERT(renderer);
   renderer->swapChain->Present(0, 0);
 }

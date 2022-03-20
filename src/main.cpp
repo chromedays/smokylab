@@ -101,9 +101,11 @@ int main(UNUSED int argc, UNUSED char **argv) {
 
     moveCameraByInputs(&camera);
 
+    smkBeginRender(&renderer);
+
     smkRenderScene(&renderer, &scene3, &camera);
 
-    smkSwapBuffers(&renderer);
+    smkEndRender(&renderer);
   }
 
   smkDestroyScene(&scene3);

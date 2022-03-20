@@ -2,7 +2,7 @@
 from pathlib import Path
 import argparse
 import subprocess
-
+import platform
 
 class Logger:
     def __init__(self, output_path: str) -> None:
@@ -31,16 +31,23 @@ class ShaderBuilder:
         self.out_dir = Path(out_dir)
 
     def build_shader(self, name: str):
-        fxc = R'C:\Program Files (x86)\Windows Kits\10\bin\10.0.19041.0\x64\fxc.exe'
-        vsoutput = self.out_dir / f'{name}.vs.cso'
-        fsoutput = self.out_dir / f'{name}.fs.cso'
-        source = self.shader_dir / f'{name}.hlsl'
+        p = platform.system()
+        if p == 'Windows':
+            fxc = R'C:\Program Files (x86)\Windows Kits\10\bin\10.0.19041.0\x64\fxc.exe'
+            vsoutput = self.out_dir / f'{name}.vs.cso'
+            fsoutput = self.out_dir / f'{name}.fs.cso'
+            source = self.shader_dir / f'{name}.hlsl'
 
-        run_command(
-            f'"{fxc}" "{source}" -E vert -T vs_5_0 -nologo -Fo "{vsoutput}"')
-        run_command(
-            f'"{fxc}" "{source}" -E frag -T ps_5_0 -nologo -Fo "{fsoutput}"')
-
+            run_command(
+                f'"{fxc}" "{source}" -E vert -T vs_5_0 -nologo -Fo "{vsoutput}"')
+            run_command(
+                f'"{fxc}" "{source}" -E frag -T ps_5_0 -nologo -Fo "{fsoutput}"')
+        elif p == 'Darwin':
+            airoutput = self.out_dir / f'{name}.air'
+            metalliboutput = self.out_dir / f'{name}.metallib'
+            source = self.shader_dir / f'{name}.metal'
+            # run_command(f'xcrun -sdk macosx metal -c "{source}" -o "{airoutput}"')
+            # run_command(f'xcrun -sdk macosx metallib "{airoutput}" -o "{metalliboutput}"')
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
